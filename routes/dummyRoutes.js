@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const DummyController = require('../controllers/dummyController');
-const { protect } = require('../middlewares/authMiddleware');
+const { verifyToken } = require('../middlewares/authMiddleware');
 
 // Public route to check server & database status
 router.get('/status', DummyController.getDbStatus);
@@ -13,6 +13,6 @@ router.get('/items', DummyController.getDummyItems);
 router.post('/auth-demo', DummyController.demoAuth);
 
 // Protected route demonstrating JWT authentication middleware verification
-router.get('/protected-route', protect, DummyController.getProtectedRoute);
+router.get('/protected-route', verifyToken, DummyController.getProtectedRoute);
 
 module.exports = router;
