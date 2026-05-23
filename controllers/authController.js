@@ -1,6 +1,7 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
+const sendEmail = require('../utils/sendEmail');
 
 class AuthController {
   /**
@@ -36,6 +37,9 @@ class AuthController {
       const salt = await bcrypt.genSalt(10);
       const password_hash = await bcrypt.hash(password, salt);
 
+      // 4.5. Generate OTP
+      const otp_code = Math.floor(100000 + Math.random() * 900000).toString();
+
       // 5. Create user in the database
       const newUser = await User.createUser({
         full_name,
@@ -43,25 +47,20 @@ class AuthController {
         password_hash,
         role,
         mobile_number: mobile_number || null,
+        otp_code
       });
 
-      // 6. Generate JWT Token
-      const payload = {
-        id: newUser.id,
-        role: newUser.role
-      };
-
-      const token = jwt.sign(
-        payload,
-        process.env.JWT_SECRET || 'supersecretjwtkey12345!',
-        { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
+      // 6. Send OTP via email
+      await sendEmail(
+        email, 
+        'CareSync Verification Code', 
+        `Welcome to CareSync!\n\nYour verification code is: ${otp_code}\n\nPlease enter this code to complete your registration.`
       );
 
-      // 7. Return success response (excluding password)
-      res.status(201).json({
+      // 7. Return success response (without JWT)
+      res.status(200).json({
         success: true,
-        message: 'User registered successfully',
-        token: `Bearer ${token}`,
+        message: 'User registered successfully. Please check your email for the verification code.',
         user: {
           id: newUser.id,
           full_name: newUser.full_name,
@@ -70,6 +69,7 @@ class AuthController {
           mobile_number: newUser.mobile_number,
           blood_group: newUser.blood_group,
           allergies: newUser.allergies,
+          is_verified: newUser.is_verified,
           created_at: newUser.created_at
         }
       });
@@ -139,6 +139,63 @@ class AuthController {
         }
       });
 
+    } catch (error) {
+      next(error);
+    }
+  }
+  /**
+   * @route   POST /api/auth/verify-otp
+   * @desc    Verify OTP and return JWT
+   * @access  Public
+   */
+  static async verifyOTP(req, res, next) {
+    try {
+      const { email, otp } = req.body;
+
+      if (!email || !otp) {
+        res.status(400);
+        return next(new Error('Please provide email and otp.'));
+      }
+
+      const user = await User.findByEmail(email);
+      if (!user) {
+        res.status(404);
+        return next(new Error('User not found.'));
+      }
+
+      if (user.otp_code !== otp) {
+        res.status(400);
+        return next(new Error('Invalid OTP.'));
+      }
+
+      // Update user is_verified status and clear OTP
+      const updatedUser = await User.verifyUser(email);
+
+      // Generate the final JWT token
+      const payload = {
+        id: updatedUser.id,
+        role: updatedUser.role
+      };
+
+      const token = jwt.sign(
+        payload,
+        process.env.JWT_SECRET || 'supersecretjwtkey12345!',
+        { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
+      );
+
+      res.status(200).json({
+        success: true,
+        message: 'OTP verified successfully. Login complete.',
+        token: `Bearer ${token}`,
+        user: {
+          id: updatedUser.id,
+          full_name: updatedUser.full_name,
+          email: updatedUser.email,
+          role: updatedUser.role,
+          is_verified: updatedUser.is_verified,
+          created_at: updatedUser.created_at
+        }
+      });
     } catch (error) {
       next(error);
     }
