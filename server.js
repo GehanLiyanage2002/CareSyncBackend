@@ -6,7 +6,7 @@ dotenv.config();
 
 const PORT = process.env.PORT || 5000;
 const NODE_ENV = process.env.NODE_ENV || 'development';
-const UserModel = require('./models/userModel');
+const User = require('./models/User');
 const db = require('./config/db');
 
 const server = app.listen(PORT, async () => {
@@ -14,7 +14,7 @@ const server = app.listen(PORT, async () => {
   await db.testConnection();
 
   // Initialize Database schemas
-  await UserModel.setupUsersTable();
+  await User.setupUsersTable();
 
   console.log('=============================================');
   console.log(`CareSync Backend Server Started Successfully`);
