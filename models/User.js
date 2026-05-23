@@ -76,6 +76,30 @@ class User {
       throw err;
     }
   }
+
+  /**
+   * Update a patient's medical profile
+   * @param {string} id User UUID
+   * @param {Object} profileData Data to update
+   * @returns {Object|null} Updated user
+   */
+  static async updatePatientProfile(id, { blood_group, allergies }) {
+    const queryText = `
+      UPDATE users 
+      SET blood_group = $1, allergies = $2 
+      WHERE id = $3 AND role = 'Patient'
+      RETURNING id, full_name, email, role, blood_group, allergies, created_at;
+    `;
+    const values = [blood_group, allergies, id];
+
+    try {
+      const result = await db.query(queryText, values);
+      return result.rows[0] || null;
+    } catch (err) {
+      console.error('Error updating patient profile:', err.message);
+      throw err;
+    }
+  }
 }
 
 module.exports = User;
