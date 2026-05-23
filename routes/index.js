@@ -2,6 +2,8 @@ const express = require('express');
 const router = express.Router();
 const dummyRoutes = require('./dummyRoutes');
 
+const authRoutes = require('./authRoutes');
+
 // Health check endpoint at root of /api
 router.get('/health', (req, res) => {
   res.status(200).json({
@@ -13,5 +15,6 @@ router.get('/health', (req, res) => {
 
 // Mount sub-routers
 router.use('/dummy', dummyRoutes);
+router.use('/auth', authRoutes);
 
 module.exports = router;

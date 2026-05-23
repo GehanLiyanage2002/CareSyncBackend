@@ -38,7 +38,44 @@ class User {
     }
   }
 
-  // Future user methods can be added here
+  /**
+   * Find a user by their email address
+   * @param {string} email 
+   * @returns {Object|null}
+   */
+  static async findByEmail(email) {
+    const queryText = 'SELECT * FROM users WHERE email = $1';
+    try {
+      const result = await db.query(queryText, [email]);
+      return result.rows[0] || null;
+    } catch (err) {
+      console.error('Error finding user by email:', err.message);
+      throw err;
+    }
+  }
+
+  /**
+   * Create a new user in the database
+   * @param {Object} userData
+   * @returns {Object} Created user
+   */
+  static async createUser(userData) {
+    const { full_name, email, password_hash, role, blood_group = null, allergies = null, face_descriptor = null } = userData;
+    const queryText = `
+      INSERT INTO users (full_name, email, password_hash, role, blood_group, allergies, face_descriptor)
+      VALUES ($1, $2, $3, $4, $5, $6, $7)
+      RETURNING id, full_name, email, role, blood_group, allergies, created_at;
+    `;
+    const values = [full_name, email, password_hash, role, blood_group, allergies, face_descriptor];
+
+    try {
+      const result = await db.query(queryText, values);
+      return result.rows[0];
+    } catch (err) {
+      console.error('Error creating user:', err.message);
+      throw err;
+    }
+  }
 }
 
 module.exports = User;
