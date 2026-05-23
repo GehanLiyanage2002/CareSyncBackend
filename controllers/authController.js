@@ -10,7 +10,7 @@ class AuthController {
    */
   static async registerUser(req, res, next) {
     try {
-      const { full_name, email, password, role } = req.body;
+      const { full_name, email, password, role, mobile_number } = req.body;
 
       // 1. Validate required fields
       if (!full_name || !email || !password || !role) {
@@ -41,7 +41,8 @@ class AuthController {
         full_name,
         email,
         password_hash,
-        role
+        role,
+        mobile_number: mobile_number || null,
       });
 
       // 6. Generate JWT Token
@@ -66,6 +67,7 @@ class AuthController {
           full_name: newUser.full_name,
           email: newUser.email,
           role: newUser.role,
+          mobile_number: newUser.mobile_number,
           blood_group: newUser.blood_group,
           allergies: newUser.allergies,
           created_at: newUser.created_at

@@ -23,6 +23,7 @@ class User {
         email VARCHAR(255) UNIQUE NOT NULL,
         password_hash VARCHAR(255) NOT NULL,
         role user_role NOT NULL,
+        mobile_number VARCHAR(20),
         blood_group VARCHAR(10),
         allergies TEXT,
         face_descriptor TEXT,
@@ -60,13 +61,13 @@ class User {
    * @returns {Object} Created user
    */
   static async createUser(userData) {
-    const { full_name, email, password_hash, role, blood_group = null, allergies = null, face_descriptor = null } = userData;
+    const { full_name, email, password_hash, role, mobile_number = null, blood_group = null, allergies = null, face_descriptor = null } = userData;
     const queryText = `
-      INSERT INTO users (full_name, email, password_hash, role, blood_group, allergies, face_descriptor)
-      VALUES ($1, $2, $3, $4, $5, $6, $7)
-      RETURNING id, full_name, email, role, blood_group, allergies, created_at;
+      INSERT INTO users (full_name, email, password_hash, role, mobile_number, blood_group, allergies, face_descriptor)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      RETURNING id, full_name, email, role, mobile_number, blood_group, allergies, created_at;
     `;
-    const values = [full_name, email, password_hash, role, blood_group, allergies, face_descriptor];
+    const values = [full_name, email, password_hash, role, mobile_number, blood_group, allergies, face_descriptor];
 
     try {
       const result = await db.query(queryText, values);
