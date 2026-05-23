@@ -7,8 +7,12 @@ dotenv.config();
 const PORT = process.env.PORT || 5000;
 const NODE_ENV = process.env.NODE_ENV || 'development';
 const UserModel = require('./models/userModel');
+const db = require('./config/db');
 
 const server = app.listen(PORT, async () => {
+  // Test Database connection robustly
+  await db.testConnection();
+
   // Initialize Database schemas
   await UserModel.setupUsersTable();
 

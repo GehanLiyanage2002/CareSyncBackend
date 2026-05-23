@@ -8,10 +8,10 @@ const isProduction = process.env.NODE_ENV === 'production';
 
 // Configuration parameters
 const poolConfig = {
-  user: process.env.DB_USER || 'postgres',
-  host: process.env.DB_HOST || 'localhost',
-  database: process.env.DB_NAME || 'caresync',
-  password: process.env.DB_PASSWORD || 'postgres',
+  user: process.env.DB_USER,
+  host: process.env.DB_HOST,
+  database: process.env.DB_NAME,
+  password: process.env.DB_PASSWORD,
   port: parseInt(process.env.DB_PORT || '5432', 10),
 };
 
@@ -24,17 +24,26 @@ if (isProduction) {
 
 const pool = new Pool(poolConfig);
 
-// Listen to pool events for monitoring
-pool.on('connect', () => {
-  console.log('Database pool connected successfully.');
-});
-
-pool.on('error', (err) => {
-  console.error('Unexpected error on idle database client:', err.message);
-  process.exit(-1);
-});
+/**
+ * Robust function to test the database connection.
+ * Attempts to acquire a client and run a simple query.
+ */
+const testConnection = async () => {
+  try {
+    const client = await pool.connect();
+    console.log('✅ Successfully connected to the PostgreSQL database.');
+    const result = await client.query('SELECT NOW() AS current_time');
+    console.log(`Database current time: ${result.rows[0].current_time}`);
+    client.release();
+  } catch (err) {
+    console.error('❌ Error connecting to the PostgreSQL database:', err.message);
+    // Graceful error handling; not exiting the process allows the server to stay alive 
+    // and serve mock data or handle reconnections.
+  }
+};
 
 module.exports = {
   query: (text, params) => pool.query(text, params),
   pool,
+  testConnection,
 };
