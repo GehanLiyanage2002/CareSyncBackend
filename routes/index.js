@@ -4,6 +4,7 @@ const dummyRoutes = require('./dummyRoutes');
 
 const authRoutes = require('./authRoutes');
 const userRoutes = require('./userRoutes');
+const doctorRoutes = require('./doctorRoutes');
 // Health check endpoint at root of /api
 router.get('/health', (req, res) => {
   res.status(200).json({
@@ -17,5 +18,6 @@ router.get('/health', (req, res) => {
 router.use('/dummy', dummyRoutes);
 router.use('/auth', authRoutes);
 router.use('/users', userRoutes);
+router.use('/doctor', doctorRoutes);
 
 module.exports = router;
