@@ -22,6 +22,13 @@ const transporter = nodemailer.createTransport({
  * @returns {Object} Info object from nodemailer
  */
 const sendEmail = async (to, subject, text) => {
+  if (!process.env.SMTP_HOST) {
+    console.warn(`[Mock Email] Would have sent email to ${to}`);
+    console.warn(`Subject: ${subject}`);
+    console.warn(`Text: ${text}`);
+    return { messageId: 'mock-id' };
+  }
+
   try {
     const mailOptions = {
       from: `"CareSync" <${process.env.SMTP_USER}>`,

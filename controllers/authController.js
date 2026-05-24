@@ -1,6 +1,7 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
+const DoctorModel = require('../models/doctorModel');
 const sendEmail = require('../utils/sendEmail');
 
 class AuthController {
@@ -11,7 +12,7 @@ class AuthController {
    */
   static async registerUser(req, res, next) {
     try {
-      const { full_name, email, password, role, mobile_number } = req.body;
+      const { full_name, email, password, role, mobile_number, specialization, experience, bio } = req.body;
 
       // 1. Validate required fields
       if (!full_name || !email || !password || !role) {
@@ -49,6 +50,15 @@ class AuthController {
         mobile_number: mobile_number || null,
         otp_code
       });
+
+      // 5.5 If Doctor, create doctor_profile
+      if (role === 'Doctor') {
+        await DoctorModel.upsertProfile(newUser.id, {
+          specialization: specialization || null,
+          experience: experience || null,
+          bio: bio || null
+        });
+      }
 
       // 6. Send OTP via email
       await sendEmail(

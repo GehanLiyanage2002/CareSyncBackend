@@ -1,6 +1,18 @@
 const db = require('../config/db');
+const { encrypt, decrypt } = require('../utils/cryptoUtils');
 
 class User {
+  static decryptUserRecord(record) {
+    if (!record) return record;
+    return {
+      ...record,
+      mobile_number: decrypt(record.mobile_number),
+      blood_group: decrypt(record.blood_group),
+      allergies: decrypt(record.allergies),
+      face_descriptor: decrypt(record.face_descriptor)
+    };
+  }
+
   /**
    * Initializes the Users table with the required schema
    */
@@ -62,7 +74,7 @@ class User {
     const queryText = 'SELECT * FROM users WHERE email = $1';
     try {
       const result = await db.query(queryText, [email]);
-      return result.rows[0] || null;
+      return User.decryptUserRecord(result.rows[0]) || null;
     } catch (err) {
       console.error('Error finding user by email:', err.message);
       throw err;
@@ -99,17 +111,17 @@ class User {
       email,
       password_hash,
       role,
-      mobile_number,
-      blood_group,
-      allergies,
-      face_descriptor,
+      encrypt(mobile_number),
+      encrypt(blood_group),
+      encrypt(allergies),
+      encrypt(face_descriptor),
       is_verified,
       otp_code
     ];
 
     try {
       const result = await db.query(queryText, values);
-      return result.rows[0];
+      return User.decryptUserRecord(result.rows[0]);
     } catch (err) {
       console.error('Error creating user:', err.message);
       throw err;
@@ -125,7 +137,7 @@ class User {
     const queryText = 'SELECT * FROM users WHERE id = $1';
     try {
       const result = await db.query(queryText, [id]);
-      return result.rows[0] || null;
+      return User.decryptUserRecord(result.rows[0]) || null;
     } catch (err) {
       console.error('Error finding user by id:', err.message);
       throw err;
@@ -168,7 +180,7 @@ class User {
     `;
     try {
       const result = await db.query(queryText, [email]);
-      return result.rows[0] || null;
+      return User.decryptUserRecord(result.rows[0]) || null;
     } catch (err) {
       console.error('Error verifying user:', err.message);
       throw err;
@@ -188,11 +200,11 @@ class User {
       WHERE id = $3 AND role = 'Patient'
       RETURNING id, full_name, email, role, blood_group, allergies, created_at;
     `;
-    const values = [blood_group, allergies, id];
+    const values = [encrypt(blood_group), encrypt(allergies), id];
 
     try {
       const result = await db.query(queryText, values);
-      return result.rows[0] || null;
+      return User.decryptUserRecord(result.rows[0]) || null;
     } catch (err) {
       console.error('Error updating patient profile:', err.message);
       throw err;
