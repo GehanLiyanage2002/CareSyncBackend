@@ -1,5 +1,6 @@
 const DoctorModel = require('../models/doctorModel');
 const db = require('../config/db');
+const { decrypt } = require('../utils/cryptoUtils');
 
 class AppointmentController {
   /**
@@ -25,6 +26,51 @@ class AppointmentController {
         is_available: isAvailable
       });
     } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * @route   GET /api/appointments/patient/my-appointments
+   * @desc    Get all appointments for the logged-in patient
+   * @access  Private (Patient only)
+   */
+  static async getPatientAppointments(req, res, next) {
+    try {
+      const patientId = req.user.id;
+
+      const result = await db.query(
+        `SELECT 
+          a.id,
+          a.token_number,
+          a.appointment_date,
+          a.start_time,
+          a.status,
+          a.payment_method,
+          a.created_at,
+          u.full_name AS doctor_name,
+          dp.specialization AS doctor_specialization,
+          a.doctor_id,
+          -- Check if a review already exists for this appointment
+          CASE WHEN r.id IS NOT NULL THEN true ELSE false END AS has_review
+        FROM appointments a
+        JOIN users u ON a.doctor_id = u.id
+        LEFT JOIN doctor_profiles dp ON dp.doctor_id = a.doctor_id
+        LEFT JOIN reviews r ON r.appointment_id = a.id
+        WHERE a.patient_id = $1
+        ORDER BY a.appointment_date DESC, a.start_time DESC`,
+        [patientId]
+      );
+
+      res.status(200).json({
+        success: true,
+        appointments: result.rows.map(row => ({
+          ...row,
+          doctor_specialization: decrypt(row.doctor_specialization)
+        }))
+      });
+    } catch (error) {
+      console.error('Error fetching patient appointments:', error);
       next(error);
     }
   }
