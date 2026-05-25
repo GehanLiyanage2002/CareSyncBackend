@@ -128,6 +128,66 @@ class AppointmentController {
       next(error);
     }
   }
+  /**
+   * @route   POST /api/appointments
+   * @desc    Create a new appointment
+   * @access  Private (Patient only)
+   */
+  static async createAppointment(req, res, next) {
+    try {
+      const patientId = req.user.id;
+      const { 
+        doctor_id, 
+        appointment_date, 
+        start_time, 
+        patient_name, 
+        age, 
+        mobile_number, 
+        gender, 
+        email, 
+        payment_method 
+      } = req.body;
+
+      if (!doctor_id || !appointment_date || !start_time || !patient_name || !mobile_number) {
+        return res.status(400).json({ success: false, message: 'Missing required fields' });
+      }
+
+      // Check if slot is already booked (just in case)
+      const existing = await db.query(
+        "SELECT id FROM appointments WHERE doctor_id = $1 AND appointment_date = $2 AND start_time = $3 AND status != 'cancelled'",
+        [doctor_id, appointment_date, start_time]
+      );
+
+      if (existing.rows.length > 0) {
+        return res.status(400).json({ success: false, message: 'This slot is already booked. Please choose another.' });
+      }
+
+      // Generate token
+      const tokenNumber = 'CS-' + Math.floor(1000 + Math.random() * 9000);
+
+      // Insert appointment
+      const result = await db.query(
+        `INSERT INTO appointments (
+          patient_id, doctor_id, appointment_date, start_time, status, 
+          patient_name, age, mobile_number, gender, email, payment_method, token_number
+        ) VALUES ($1, $2, $3, $4, 'scheduled', $5, $6, $7, $8, $9, $10, $11) RETURNING *`,
+        [
+          patientId, doctor_id, appointment_date, start_time, 
+          patient_name, age, mobile_number, gender, email, payment_method, tokenNumber
+        ]
+      );
+
+      res.status(201).json({
+        success: true,
+        message: 'Appointment booked successfully',
+        appointment: result.rows[0]
+      });
+
+    } catch (error) {
+      console.error('Error creating appointment:', error);
+      next(error);
+    }
+  }
 }
 
 module.exports = AppointmentController;

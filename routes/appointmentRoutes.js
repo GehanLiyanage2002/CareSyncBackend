@@ -25,4 +25,12 @@ router.get(
   AppointmentController.getAvailableSlots
 );
 
+// Route to create a new appointment
+router.post(
+  '/',
+  verifyToken,
+  requireRole(['Patient']),
+  AppointmentController.createAppointment
+);
+
 module.exports = router;
