@@ -10,14 +10,20 @@ class UserController {
     try {
       const userId = req.user.id;
       const userRole = req.user.role;
-      const { blood_group, allergies } = req.body;
+      const { blood_group, allergies, chronic_conditions, emergency_contact_name, emergency_contact_number } = req.body;
 
       if (userRole !== 'Patient') {
         res.status(403);
         return next(new Error('Only patients can update their medical profile through this endpoint.'));
       }
 
-      const updatedUser = await User.updatePatientProfile(userId, { blood_group, allergies });
+      const updatedUser = await User.updatePatientProfile(userId, { 
+        blood_group, 
+        allergies, 
+        chronic_conditions, 
+        emergency_contact_name, 
+        emergency_contact_number 
+      });
 
       if (!updatedUser) {
         res.status(404);

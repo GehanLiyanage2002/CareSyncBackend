@@ -9,7 +9,10 @@ class User {
       mobile_number: decrypt(record.mobile_number),
       blood_group: decrypt(record.blood_group),
       allergies: decrypt(record.allergies),
-      face_descriptor: decrypt(record.face_descriptor)
+      face_descriptor: decrypt(record.face_descriptor),
+      chronic_conditions: decrypt(record.chronic_conditions),
+      emergency_contact_name: decrypt(record.emergency_contact_name),
+      emergency_contact_number: decrypt(record.emergency_contact_number)
     };
   }
 
@@ -62,6 +65,9 @@ class User {
         ALTER TABLE users ADD COLUMN IF NOT EXISTS blood_group TEXT;
         ALTER TABLE users ADD COLUMN IF NOT EXISTS allergies TEXT;
         ALTER TABLE users ADD COLUMN IF NOT EXISTS face_descriptor TEXT;
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS chronic_conditions TEXT;
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS emergency_contact_name TEXT;
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS emergency_contact_number TEXT;
       EXCEPTION WHEN others THEN null;
       END $$;
     `;
@@ -202,14 +208,21 @@ class User {
    * @param {Object} profileData Data to update
    * @returns {Object|null} Updated user
    */
-  static async updatePatientProfile(id, { blood_group, allergies }) {
+  static async updatePatientProfile(id, { blood_group, allergies, chronic_conditions, emergency_contact_name, emergency_contact_number }) {
     const queryText = `
       UPDATE users 
-      SET blood_group = $1, allergies = $2 
-      WHERE id = $3 AND role = 'Patient'
-      RETURNING id, full_name, email, role, blood_group, allergies, created_at;
+      SET blood_group = $1, allergies = $2, chronic_conditions = $3, emergency_contact_name = $4, emergency_contact_number = $5
+      WHERE id = $6 AND role = 'Patient'
+      RETURNING id, full_name, email, role, blood_group, allergies, chronic_conditions, emergency_contact_name, emergency_contact_number, created_at;
     `;
-    const values = [encrypt(blood_group), encrypt(allergies), id];
+    const values = [
+      encrypt(blood_group), 
+      encrypt(allergies), 
+      encrypt(chronic_conditions),
+      encrypt(emergency_contact_name),
+      encrypt(emergency_contact_number),
+      id
+    ];
 
     try {
       const result = await db.query(queryText, values);
