@@ -13,6 +13,12 @@ class AppointmentController {
       // Toggle logic using the model
       const isAvailable = await DoctorModel.toggleAvailability(doctorId);
 
+      // Emit socket event to all clients
+      const io = req.app.get('io');
+      if (io) {
+        io.emit('doctorAvailabilityChanged', { doctor_id: doctorId, is_available: isAvailable });
+      }
+
       res.status(200).json({
         success: true,
         message: 'Availability updated successfully',
@@ -170,12 +176,18 @@ class AppointmentController {
         `INSERT INTO appointments (
           patient_id, doctor_id, appointment_date, start_time, status, 
           patient_name, age, mobile_number, gender, email, payment_method, token_number
-        ) VALUES ($1, $2, $3, $4, 'scheduled', $5, $6, $7, $8, $9, $10, $11) RETURNING *`,
+        ) VALUES ($1, $2, $3, $4, 'pending', $5, $6, $7, $8, $9, $10, $11) RETURNING *`,
         [
           patientId, doctor_id, appointment_date, start_time, 
           patient_name, age, mobile_number, gender, email, payment_method, tokenNumber
         ]
       );
+
+      // Emit socket event
+      const io = req.app.get('io');
+      if (io) {
+        io.emit('slotBooked', { doctor_id, date: appointment_date, start_time });
+      }
 
       res.status(201).json({
         success: true,
@@ -185,6 +197,33 @@ class AppointmentController {
 
     } catch (error) {
       console.error('Error creating appointment:', error);
+      next(error);
+    }
+  }
+
+  /**
+   * @route   GET /api/appointments/configured-dates/:doctorId
+   * @desc    Get configured scheduled dates for a doctor (>= current date)
+   * @access  Public
+   */
+  static async getConfiguredDates(req, res, next) {
+    try {
+      const { doctorId } = req.params;
+      
+      const query = `
+        SELECT DISTINCT schedule_date 
+        FROM doctor_schedules 
+        WHERE doctor_id = $1 AND schedule_date >= CURRENT_DATE 
+        ORDER BY schedule_date ASC
+      `;
+      const result = await db.query(query, [doctorId]);
+      
+      res.status(200).json({
+        success: true,
+        dates: result.rows.map(row => row.schedule_date)
+      });
+    } catch (error) {
+      console.error('Error fetching configured dates:', error);
       next(error);
     }
   }
