@@ -60,11 +60,23 @@ exports.up = (pgm) => {
       status VARCHAR(20) CHECK (status IN ('pending', 'confirmed', 'completed', 'cancelled')) DEFAULT 'pending',
       created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
     );
+
+    -- Create Doctor Schedules Schema
+    CREATE TABLE IF NOT EXISTS doctor_schedules (
+      id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+      doctor_id UUID REFERENCES users(id) ON DELETE CASCADE,
+      day_of_week INTEGER CHECK (day_of_week >= 0 AND day_of_week <= 6),
+      start_time TIME NOT NULL,
+      end_time TIME NOT NULL,
+      slot_duration_minutes INTEGER NOT NULL,
+      UNIQUE(doctor_id, day_of_week)
+    );
   `);
 };
 
 exports.down = (pgm) => {
   pgm.sql(`
+    DROP TABLE IF EXISTS doctor_schedules CASCADE;
     DROP TABLE IF EXISTS appointments CASCADE;
     DROP TABLE IF EXISTS doctor_profiles CASCADE;
     DROP TABLE IF EXISTS dummy_items CASCADE;
