@@ -55,6 +55,15 @@ class User {
         ALTER TABLE users ADD COLUMN IF NOT EXISTS otp_code VARCHAR(10);
       EXCEPTION WHEN others THEN null;
       END $$;
+
+      -- Add missing columns for existing tables
+      DO $$ BEGIN
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS mobile_number TEXT;
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS blood_group TEXT;
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS allergies TEXT;
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS face_descriptor TEXT;
+      EXCEPTION WHEN others THEN null;
+      END $$;
     `;
     
     try {
