@@ -6,4 +6,19 @@ const { verifyToken } = require('../middlewares/authMiddleware');
 // Route to update a patient's medical profile
 router.put('/profile', verifyToken, UserController.updatePatientProfile);
 
+// Route to update general profile (name, contact)
+router.put('/general', verifyToken, UserController.updateGeneralProfile);
+
+// Route to change password
+router.put('/password', verifyToken, UserController.changePassword);
+
+// Route to get doctor profile
+router.get('/doctor-profile', verifyToken, UserController.getDoctorProfile);
+
+// Route to update doctor profile
+router.put('/doctor-profile', verifyToken, UserController.updateDoctorProfile);
+
+// Route to get list of available doctors (Public or token depending on needs, we make it public so users can see doctors before login? Let's make it public)
+router.get('/doctors', UserController.getAvailableDoctors);
+
 module.exports = router;

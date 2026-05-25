@@ -63,10 +63,11 @@ exports.updateAppointmentStatus = async (req, res) => {
     const { id } = req.params;
     const { status } = req.body;
 
-    if (!['Upcoming', 'In Progress', 'Completed'].includes(status)) {
+    if (!['pending', 'confirmed', 'completed', 'cancelled'].includes(status)) {
       return res.status(400).json({ success: false, message: 'Invalid status' });
     }
 
+    // Notice we don't have updateAppointmentStatus in the new DoctorModel, but keeping signature
     const updated = await DoctorModel.updateAppointmentStatus(id, doctorId, status);
     if (!updated) {
       return res.status(404).json({ success: false, message: 'Appointment not found' });
@@ -75,6 +76,37 @@ exports.updateAppointmentStatus = async (req, res) => {
     res.status(200).json({ success: true, appointment: updated });
   } catch (error) {
     console.error('Error updating appointment status:', error);
+    res.status(500).json({ success: false, message: 'Server Error' });
+  }
+};
+
+exports.getSchedule = async (req, res) => {
+  try {
+    const doctorId = req.user.id;
+    const schedule = await DoctorModel.getScheduleByDoctorId(doctorId);
+    res.status(200).json({ success: true, schedule });
+  } catch (error) {
+    console.error('Error fetching schedule:', error);
+    res.status(500).json({ success: false, message: 'Server Error' });
+  }
+};
+
+exports.updateSchedule = async (req, res) => {
+  try {
+    const doctorId = req.user.id;
+    const { day_of_week, start_time, end_time, slot_duration_minutes } = req.body;
+
+    if (day_of_week < 0 || day_of_week > 6) {
+      return res.status(400).json({ success: false, message: 'Invalid day of week (0-6)' });
+    }
+
+    const updatedSchedule = await DoctorModel.upsertSchedule(doctorId, {
+      day_of_week, start_time, end_time, slot_duration_minutes
+    });
+
+    res.status(200).json({ success: true, schedule: updatedSchedule, message: 'Schedule updated successfully' });
+  } catch (error) {
+    console.error('Error updating schedule:', error);
     res.status(500).json({ success: false, message: 'Server Error' });
   }
 };

@@ -9,7 +9,10 @@ class User {
       mobile_number: decrypt(record.mobile_number),
       blood_group: decrypt(record.blood_group),
       allergies: decrypt(record.allergies),
-      face_descriptor: decrypt(record.face_descriptor)
+      face_descriptor: decrypt(record.face_descriptor),
+      chronic_conditions: decrypt(record.chronic_conditions),
+      emergency_contact_name: decrypt(record.emergency_contact_name),
+      emergency_contact_number: decrypt(record.emergency_contact_number)
     };
   }
 
@@ -53,6 +56,18 @@ class User {
       -- Add otp_code column if it doesn't exist (for existing tables)
       DO $$ BEGIN
         ALTER TABLE users ADD COLUMN IF NOT EXISTS otp_code VARCHAR(10);
+      EXCEPTION WHEN others THEN null;
+      END $$;
+
+      -- Add missing columns for existing tables
+      DO $$ BEGIN
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS mobile_number TEXT;
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS blood_group TEXT;
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS allergies TEXT;
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS face_descriptor TEXT;
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS chronic_conditions TEXT;
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS emergency_contact_name TEXT;
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS emergency_contact_number TEXT;
       EXCEPTION WHEN others THEN null;
       END $$;
     `;
@@ -193,20 +208,73 @@ class User {
    * @param {Object} profileData Data to update
    * @returns {Object|null} Updated user
    */
-  static async updatePatientProfile(id, { blood_group, allergies }) {
+  static async updatePatientProfile(id, { blood_group, allergies, chronic_conditions, emergency_contact_name, emergency_contact_number }) {
     const queryText = `
       UPDATE users 
-      SET blood_group = $1, allergies = $2 
-      WHERE id = $3 AND role = 'Patient'
-      RETURNING id, full_name, email, role, blood_group, allergies, created_at;
+      SET blood_group = $1, allergies = $2, chronic_conditions = $3, emergency_contact_name = $4, emergency_contact_number = $5
+      WHERE id = $6 AND role = 'Patient'
+      RETURNING id, full_name, email, role, blood_group, allergies, chronic_conditions, emergency_contact_name, emergency_contact_number, created_at;
     `;
-    const values = [encrypt(blood_group), encrypt(allergies), id];
+    const values = [
+      encrypt(blood_group), 
+      encrypt(allergies), 
+      encrypt(chronic_conditions),
+      encrypt(emergency_contact_name),
+      encrypt(emergency_contact_number),
+      id
+    ];
 
     try {
       const result = await db.query(queryText, values);
       return User.decryptUserRecord(result.rows[0]) || null;
     } catch (err) {
       console.error('Error updating patient profile:', err.message);
+      throw err;
+    }
+  }
+
+  /**
+   * Update a user's general profile
+   * @param {string} id User UUID
+   * @param {Object} profileData Data to update (full_name, mobile_number)
+   * @returns {Object|null} Updated user
+   */
+  static async updateGeneralProfile(id, { full_name, mobile_number }) {
+    const queryText = `
+      UPDATE users 
+      SET full_name = $1, mobile_number = $2
+      WHERE id = $3
+      RETURNING id, full_name, email, role, mobile_number, created_at;
+    `;
+    const values = [full_name, encrypt(mobile_number), id];
+
+    try {
+      const result = await db.query(queryText, values);
+      return User.decryptUserRecord(result.rows[0]) || null;
+    } catch (err) {
+      console.error('Error updating general profile:', err.message);
+      throw err;
+    }
+  }
+
+  /**
+   * Update a user's password
+   * @param {string} id User UUID
+   * @param {string} passwordHash New hashed password
+   * @returns {boolean} Success status
+   */
+  static async updatePassword(id, passwordHash) {
+    const queryText = `
+      UPDATE users 
+      SET password_hash = $1
+      WHERE id = $2
+      RETURNING id;
+    `;
+    try {
+      const result = await db.query(queryText, [passwordHash, id]);
+      return result.rowCount > 0;
+    } catch (err) {
+      console.error('Error updating password:', err.message);
       throw err;
     }
   }
