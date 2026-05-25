@@ -9,6 +9,7 @@ router.use(verifyToken);
 // Profile routes
 router.get('/profile', DoctorController.getProfile);
 router.put('/profile', DoctorController.updateProfile);
+router.put('/fee', DoctorController.updateFee);
 
 // Appointments routes
 router.get('/appointments', DoctorController.getAppointments);

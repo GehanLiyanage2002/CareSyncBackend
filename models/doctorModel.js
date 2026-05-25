@@ -60,6 +60,17 @@ class DoctorModel {
     return result.rows[0].is_available;
   }
 
+  static async updateConsultationFee(doctorId, fee) {
+    const query = `
+      UPDATE doctor_profiles
+      SET consultation_fee = $2, updated_at = CURRENT_TIMESTAMP
+      WHERE doctor_id = $1
+      RETURNING *;
+    `;
+    const result = await db.query(query, [doctorId, fee]);
+    return result.rows[0];
+  }
+
   static async getAppointmentsByDoctorId(doctorId) {
     const query = `
       SELECT 
