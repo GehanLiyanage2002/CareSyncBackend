@@ -97,6 +97,16 @@ exports.updateAppointmentStatus = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Appointment not found' });
     }
 
+    // Emit socket event for real-time patient update
+    const io = req.app.get('io');
+    if (io) {
+      io.emit('appointmentStatusChanged', {
+        appointment_id: id,
+        status,
+        patient_id: updated.patient_id
+      });
+    }
+
     res.status(200).json({ success: true, appointment: updated });
   } catch (error) {
     console.error('Error updating appointment status:', error);

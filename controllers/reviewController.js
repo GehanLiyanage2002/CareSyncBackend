@@ -57,6 +57,12 @@ class ReviewController {
         [appointment_id, patientId, doctor_id, rating, comment || '', patientName]
       );
 
+      // Emit socket event for real-time review update on doctor profile
+      const io = req.app?.get('io');
+      if (io) {
+        io.emit('reviewAdded', { doctor_id, review: result.rows[0] });
+      }
+
       res.status(201).json({ success: true, review: result.rows[0] });
     } catch (error) {
       console.error('Error creating review:', error);
