@@ -136,18 +136,30 @@ class UserController {
     try {
       const userId = req.user.id;
       const userRole = req.user.role;
-      const { specialization, experience, bio } = req.body;
+      const { specialization, experience, bio, location } = req.body;
 
       if (userRole !== 'Doctor') {
         res.status(403);
         return next(new Error('Only doctors can update their professional profile.'));
       }
 
-      const updatedProfile = await DoctorModel.upsertProfile(userId, { specialization, experience, bio });
+      const updatedProfile = await DoctorModel.upsertProfile(userId, { specialization, experience, bio, location });
 
       if (!updatedProfile) {
         res.status(400);
         return next(new Error('Failed to update doctor profile.'));
+      }
+
+      // Emit socket event for real-time update on doctor profile pages
+      const io = req.app?.get('io');
+      if (io) {
+        io.emit('doctorProfileUpdated', {
+          doctor_id: userId,
+          location: updatedProfile.location,
+          specialization: updatedProfile.specialization,
+          experience: updatedProfile.experience,
+          bio: updatedProfile.bio
+        });
       }
 
       res.status(200).json({
@@ -212,7 +224,7 @@ class UserController {
           '95%' as "successRate", 
           '1k+' as patients, 
           'MBBS, MD' as qualifications,
-          'CareSync Hospital' as location,
+          COALESCE(dp.location, 'Not specified') as location,
           COALESCE(dp.consultation_fee, 1500) as "consultationFee",
           '4.8' as rating,
           'https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?auto=format&fit=crop&q=80&w=400' as image

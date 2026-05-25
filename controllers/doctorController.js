@@ -24,11 +24,11 @@ exports.getProfile = async (req, res) => {
 exports.updateProfile = async (req, res) => {
   try {
     const doctorId = req.user.id;
-    const { specialization, experience, bio, full_name, email, mobile_number } = req.body;
+    const { specialization, experience, bio, full_name, email, mobile_number, location } = req.body;
     
     // Upsert profile data
     const updatedProfile = await DoctorModel.upsertProfile(doctorId, {
-      specialization, experience, bio
+      specialization, experience, bio, location
     });
 
     // Optionally update user data if provided
