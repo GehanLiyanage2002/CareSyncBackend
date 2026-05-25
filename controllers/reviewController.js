@@ -129,6 +129,69 @@ class ReviewController {
       res.status(500).json({ success: false, message: 'Server error' });
     }
   }
+
+  /**
+   * @route   GET /api/reviews/patient/my-reviews
+   * @desc    Get all reviews the logged-in patient has submitted
+   * @access  Private (Patient)
+   */
+  static async getPatientReviews(req, res) {
+    try {
+      const patientId = req.user.id;
+
+      const result = await db.query(
+        `SELECT r.id, r.rating, r.comment, r.is_read, r.created_at,
+                r.doctor_id, u.full_name AS doctor_name,
+                dp.specialization AS doctor_specialization,
+                a.appointment_date
+         FROM reviews r
+         JOIN users u ON r.doctor_id = u.id
+         LEFT JOIN doctor_profiles dp ON dp.doctor_id = r.doctor_id
+         LEFT JOIN appointments a ON r.appointment_id = a.id
+         WHERE r.patient_id = $1
+         ORDER BY r.created_at DESC`,
+        [patientId]
+      );
+
+      const { decrypt } = require('../utils/cryptoUtils');
+      const reviews = result.rows.map(row => ({
+        ...row,
+        doctor_specialization: row.doctor_specialization ? decrypt(row.doctor_specialization) : null
+      }));
+
+      res.status(200).json({ success: true, reviews });
+    } catch (error) {
+      console.error('Error fetching patient reviews:', error);
+      res.status(500).json({ success: false, message: 'Server error' });
+    }
+  }
+
+  /**
+   * @route   PUT /api/reviews/mark-read
+   * @desc    Doctor marks all their reviews as read
+   * @access  Private (Doctor)
+   */
+  static async markReviewsRead(req, res) {
+    try {
+      const doctorId = req.user.id;
+
+      await db.query(
+        `UPDATE reviews SET is_read = TRUE WHERE doctor_id = $1 AND is_read = FALSE`,
+        [doctorId]
+      );
+
+      // Emit socket event so patient's view updates in real-time
+      const io = req.app?.get('io');
+      if (io) {
+        io.emit('reviewsRead', { doctor_id: doctorId });
+      }
+
+      res.status(200).json({ success: true });
+    } catch (error) {
+      console.error('Error marking reviews as read:', error);
+      res.status(500).json({ success: false, message: 'Server error' });
+    }
+  }
 }
 
 module.exports = ReviewController;

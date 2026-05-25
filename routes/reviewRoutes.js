@@ -11,8 +11,21 @@ router.post(
   ReviewController.createReview
 );
 
-// Get all reviews for a doctor (public)
-router.get('/:doctorId', ReviewController.getDoctorReviews);
+// Patient views all their submitted reviews
+router.get(
+  '/patient/my-reviews',
+  verifyToken,
+  requireRole(['Patient']),
+  ReviewController.getPatientReviews
+);
+
+// Doctor marks all their reviews as read
+router.put(
+  '/mark-read',
+  verifyToken,
+  requireRole(['Doctor']),
+  ReviewController.markReviewsRead
+);
 
 // Check if patient already reviewed an appointment
 router.get(
@@ -21,5 +34,8 @@ router.get(
   requireRole(['Patient']),
   ReviewController.getMyReview
 );
+
+// Get all reviews for a doctor (public)
+router.get('/:doctorId', ReviewController.getDoctorReviews);
 
 module.exports = router;
