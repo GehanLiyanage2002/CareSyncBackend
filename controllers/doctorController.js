@@ -94,14 +94,14 @@ exports.getSchedule = async (req, res) => {
 exports.updateSchedule = async (req, res) => {
   try {
     const doctorId = req.user.id;
-    const { day_of_week, start_time, end_time, slot_duration_minutes } = req.body;
+    const { schedule_date, start_time, end_time, slot_duration_minutes } = req.body;
 
-    if (day_of_week < 0 || day_of_week > 6) {
-      return res.status(400).json({ success: false, message: 'Invalid day of week (0-6)' });
+    if (!schedule_date) {
+      return res.status(400).json({ success: false, message: 'Schedule date is required' });
     }
 
     const updatedSchedule = await DoctorModel.upsertSchedule(doctorId, {
-      day_of_week, start_time, end_time, slot_duration_minutes
+      schedule_date, start_time, end_time, slot_duration_minutes
     });
 
     res.status(200).json({ success: true, schedule: updatedSchedule, message: 'Schedule updated successfully' });
