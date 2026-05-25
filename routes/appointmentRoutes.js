@@ -11,6 +11,14 @@ router.put(
   AppointmentController.toggleAvailability
 );
 
+// Route to get patient's own appointments
+router.get(
+  '/patient/my-appointments',
+  verifyToken,
+  requireRole(['Patient']),
+  AppointmentController.getPatientAppointments
+);
+
 // Route to get doctor's appointments
 router.get(
   '/doctor/my-appointments', 
