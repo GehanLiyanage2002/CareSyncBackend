@@ -232,6 +232,52 @@ class User {
       throw err;
     }
   }
+
+  /**
+   * Update a user's general profile
+   * @param {string} id User UUID
+   * @param {Object} profileData Data to update (full_name, mobile_number)
+   * @returns {Object|null} Updated user
+   */
+  static async updateGeneralProfile(id, { full_name, mobile_number }) {
+    const queryText = `
+      UPDATE users 
+      SET full_name = $1, mobile_number = $2
+      WHERE id = $3
+      RETURNING id, full_name, email, role, mobile_number, created_at;
+    `;
+    const values = [full_name, encrypt(mobile_number), id];
+
+    try {
+      const result = await db.query(queryText, values);
+      return User.decryptUserRecord(result.rows[0]) || null;
+    } catch (err) {
+      console.error('Error updating general profile:', err.message);
+      throw err;
+    }
+  }
+
+  /**
+   * Update a user's password
+   * @param {string} id User UUID
+   * @param {string} passwordHash New hashed password
+   * @returns {boolean} Success status
+   */
+  static async updatePassword(id, passwordHash) {
+    const queryText = `
+      UPDATE users 
+      SET password_hash = $1
+      WHERE id = $2
+      RETURNING id;
+    `;
+    try {
+      const result = await db.query(queryText, [passwordHash, id]);
+      return result.rowCount > 0;
+    } catch (err) {
+      console.error('Error updating password:', err.message);
+      throw err;
+    }
+  }
 }
 
 module.exports = User;
