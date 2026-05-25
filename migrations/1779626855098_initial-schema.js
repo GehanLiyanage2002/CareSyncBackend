@@ -44,32 +44,21 @@ exports.up = (pgm) => {
       specialization VARCHAR(255),
       experience VARCHAR(255),
       bio TEXT,
+      is_available BOOLEAN DEFAULT TRUE,
       created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
       updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
       UNIQUE(doctor_id)
     );
 
     -- Create Appointments Schema
-    DO $$ BEGIN
-        CREATE TYPE appointment_status AS ENUM ('Upcoming', 'In Progress', 'Completed');
-    EXCEPTION
-        WHEN duplicate_object THEN null;
-    END $$;
-
     CREATE TABLE IF NOT EXISTS appointments (
       id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+      patient_id UUID REFERENCES users(id) ON DELETE CASCADE,
       doctor_id UUID REFERENCES users(id) ON DELETE CASCADE,
-      patient_id UUID REFERENCES users(id) ON DELETE SET NULL,
-      patient_name VARCHAR(255) NOT NULL,
-      patient_age INT,
-      patient_gender VARCHAR(50),
-      patient_contact VARCHAR(50),
       appointment_date DATE NOT NULL,
-      appointment_time VARCHAR(50) NOT NULL,
-      reason TEXT,
-      status appointment_status DEFAULT 'Upcoming',
-      created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-      updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      start_time TIME NOT NULL,
+      status VARCHAR(20) CHECK (status IN ('pending', 'confirmed', 'completed', 'cancelled')) DEFAULT 'pending',
+      created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
     );
   `);
 };
@@ -80,7 +69,6 @@ exports.down = (pgm) => {
     DROP TABLE IF EXISTS doctor_profiles CASCADE;
     DROP TABLE IF EXISTS dummy_items CASCADE;
     DROP TABLE IF EXISTS users CASCADE;
-    DROP TYPE IF EXISTS appointment_status;
     DROP TYPE IF EXISTS user_role;
   `);
 };
