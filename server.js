@@ -29,6 +29,25 @@ const server = app.listen(PORT, async () => {
   console.log(`- Auth Demo:    http://localhost:${PORT}/api/dummy/auth-demo`);
 });
 
+// Initialize Socket.IO
+const { Server } = require("socket.io");
+const io = new Server(server, {
+  cors: {
+    origin: "*",
+    methods: ["GET", "POST", "PUT", "DELETE"]
+  }
+});
+
+app.set('io', io);
+
+io.on('connection', (socket) => {
+  console.log('New client connected', socket.id);
+  
+  socket.on('disconnect', () => {
+    console.log('Client disconnected', socket.id);
+  });
+});
+
 // Handle unhandled promise rejections
 process.on('unhandledRejection', (err, promise) => {
   console.error(`Unhandled Rejection Error: ${err.message}`);

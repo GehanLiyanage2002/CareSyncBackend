@@ -25,6 +25,12 @@ router.get(
   AppointmentController.getAvailableSlots
 );
 
+// Route to get configured dates for a doctor
+router.get(
+  '/configured-dates/:doctorId',
+  AppointmentController.getConfiguredDates
+);
+
 // Route to create a new appointment
 router.post(
   '/',
