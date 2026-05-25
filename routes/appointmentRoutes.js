@@ -35,7 +35,7 @@ router.get(
 router.post(
   '/',
   verifyToken,
-  requireRole(['Patient']),
+  requireRole(['Patient', 'Doctor']),
   AppointmentController.createAppointment
 );
 

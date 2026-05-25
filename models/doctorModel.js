@@ -74,44 +74,33 @@ class DoctorModel {
   static async getAppointmentsByDoctorId(doctorId) {
     const query = `
       SELECT 
-        a.id, 
-        a.appointment_date, 
-        a.start_time, 
-        a.status,
-        u.full_name as patient_name,
-        u.mobile_number as patient_contact
-      FROM appointments a
-      JOIN users u ON a.patient_id = u.id
-      WHERE a.doctor_id = $1 
-      ORDER BY a.appointment_date ASC, a.start_time ASC
+        id, 
+        token_number,
+        appointment_date, 
+        start_time, 
+        status,
+        patient_name,
+        age as patient_age,
+        gender as patient_gender,
+        mobile_number as patient_contact,
+        payment_method
+      FROM appointments 
+      WHERE doctor_id = $1 
+      ORDER BY appointment_date ASC, start_time ASC
     `;
     const result = await db.query(query, [doctorId]);
-    // The users table has mobile_number encrypted, we should decrypt it if it's fetched
-    return result.rows.map(row => ({
-      ...row,
-      patient_contact: row.patient_contact ? decrypt(row.patient_contact) : null
-    }));
+    return result.rows;
   }
 
   static async updateAppointmentStatus(appointmentId, doctorId, status) {
     const query = `
       UPDATE appointments 
-      SET status = $1, updated_at = CURRENT_TIMESTAMP
+      SET status = $1
       WHERE id = $2 AND doctor_id = $3
       RETURNING *;
     `;
     const result = await db.query(query, [status, appointmentId, doctorId]);
-    const row = result.rows[0];
-    if (!row) return row;
-    return {
-      ...row,
-      patient_name: decrypt(row.patient_name),
-      patient_age: decrypt(row.patient_age),
-      patient_gender: decrypt(row.patient_gender),
-      patient_contact: decrypt(row.patient_contact),
-      appointment_time: decrypt(row.appointment_time),
-      reason: decrypt(row.reason)
-    };
+    return result.rows[0];
   }
   static async upsertSchedule(doctorId, scheduleData) {
     const { schedule_date, start_time, end_time, slot_duration_minutes } = scheduleData;
