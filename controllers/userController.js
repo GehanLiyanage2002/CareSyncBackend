@@ -189,6 +189,59 @@ class UserController {
       next(error);
     }
   }
+
+  /**
+   * @route   GET /api/users/doctors
+   * @desc    Get a list of all doctors (optionally filtered by availability)
+   * @access  Public
+   */
+  static async getAvailableDoctors(req, res, next) {
+    try {
+      const db = require('../config/db');
+      const { decrypt } = require('../utils/cryptoUtils');
+      
+      const query = `
+        SELECT 
+          u.id as doctor_id, 
+          u.full_name as name, 
+          dp.specialization, 
+          dp.experience, 
+          dp.bio as about,
+          dp.is_available,
+          -- Provide some dummy data for frontend mapping until we fully implement them
+          '95%' as "successRate", 
+          '1k+' as patients, 
+          'MBBS, MD' as qualifications,
+          'CareSync Hospital' as location,
+          1500 as "consultationFee",
+          '4.8' as rating,
+          'https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?auto=format&fit=crop&q=80&w=400' as image
+        FROM users u
+        LEFT JOIN doctor_profiles dp ON u.id = dp.doctor_id
+        WHERE u.role = 'Doctor'
+      `;
+      
+      const result = await db.query(query);
+      
+      // Decrypt the encrypted fields
+      const doctors = result.rows.map(doc => {
+        return {
+          ...doc,
+          specialization: doc.specialization ? decrypt(doc.specialization) : 'Not Specified',
+          experience: doc.experience ? decrypt(doc.experience) : 'Not Specified',
+          about: doc.about ? decrypt(doc.about) : 'No bio available'
+        };
+      });
+
+      res.status(200).json({
+        success: true,
+        doctors
+      });
+    } catch (error) {
+      console.error("Error fetching doctors:", error);
+      res.status(500).json({ success: false, message: 'Server Error' });
+    }
+  }
 }
 
 module.exports = UserController;
