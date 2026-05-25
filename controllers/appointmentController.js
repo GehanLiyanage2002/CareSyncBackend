@@ -41,6 +41,8 @@ class AppointmentController {
     } catch (error) {
       next(error);
     }
+  }
+
   /**
    * @route   GET /api/appointments/slots/:doctorId?date=YYYY-MM-DD
    * @desc    Get available time slots for a doctor on a specific date
