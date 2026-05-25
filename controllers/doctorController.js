@@ -46,6 +46,24 @@ exports.updateProfile = async (req, res) => {
   }
 };
 
+exports.updateFee = async (req, res) => {
+  try {
+    const doctorId = req.user.id;
+    const { fee } = req.body;
+    
+    if (fee === undefined || isNaN(fee) || fee < 0) {
+      return res.status(400).json({ success: false, message: 'Valid consultation fee is required' });
+    }
+
+    const updatedProfile = await DoctorModel.updateConsultationFee(doctorId, fee);
+    
+    res.status(200).json({ success: true, profile: updatedProfile, message: 'Consultation fee updated successfully' });
+  } catch (error) {
+    console.error('Error updating consultation fee:', error);
+    res.status(500).json({ success: false, message: 'Server Error' });
+  }
+};
+
 exports.getAppointments = async (req, res) => {
   try {
     const doctorId = req.user.id;

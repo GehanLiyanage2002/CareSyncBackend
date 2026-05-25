@@ -213,7 +213,7 @@ class UserController {
           '1k+' as patients, 
           'MBBS, MD' as qualifications,
           'CareSync Hospital' as location,
-          1500 as "consultationFee",
+          COALESCE(dp.consultation_fee, 1500) as "consultationFee",
           '4.8' as rating,
           'https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?auto=format&fit=crop&q=80&w=400' as image
         FROM users u
