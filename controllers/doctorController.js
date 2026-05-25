@@ -57,6 +57,12 @@ exports.updateFee = async (req, res) => {
 
     const updatedProfile = await DoctorModel.updateConsultationFee(doctorId, fee);
     
+    // Emit socket event for realtime update
+    const io = req.app.get('io');
+    if (io) {
+      io.emit('doctorFeeChanged', { doctor_id: doctorId, consultation_fee: fee });
+    }
+    
     res.status(200).json({ success: true, profile: updatedProfile, message: 'Consultation fee updated successfully' });
   } catch (error) {
     console.error('Error updating consultation fee:', error);
