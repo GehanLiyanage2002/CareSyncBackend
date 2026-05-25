@@ -19,4 +19,10 @@ router.get(
   AppointmentController.getDoctorAppointments
 );
 
+// Route to get available slots for a doctor
+router.get(
+  '/slots/:doctorId',
+  AppointmentController.getAvailableSlots
+);
+
 module.exports = router;
