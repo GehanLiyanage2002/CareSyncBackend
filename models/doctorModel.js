@@ -102,6 +102,31 @@ class DoctorModel {
       reason: decrypt(row.reason)
     };
   }
+  static async upsertSchedule(doctorId, scheduleData) {
+    const { day_of_week, start_time, end_time, slot_duration_minutes } = scheduleData;
+    const query = `
+      INSERT INTO doctor_schedules (doctor_id, day_of_week, start_time, end_time, slot_duration_minutes)
+      VALUES ($1, $2, $3, $4, $5)
+      ON CONFLICT (doctor_id, day_of_week) 
+      DO UPDATE SET 
+        start_time = EXCLUDED.start_time,
+        end_time = EXCLUDED.end_time,
+        slot_duration_minutes = EXCLUDED.slot_duration_minutes
+      RETURNING *;
+    `;
+    const result = await db.query(query, [doctorId, day_of_week, start_time, end_time, slot_duration_minutes]);
+    return result.rows[0];
+  }
+
+  static async getScheduleByDoctorId(doctorId) {
+    const query = `
+      SELECT * FROM doctor_schedules 
+      WHERE doctor_id = $1 
+      ORDER BY day_of_week ASC
+    `;
+    const result = await db.query(query, [doctorId]);
+    return result.rows;
+  }
 }
 
 module.exports = DoctorModel;
