@@ -72,8 +72,8 @@ class AppointmentController {
 
       // Fetch doctor's schedule for that day
       const scheduleResult = await db.query(
-        'SELECT start_time, end_time, slot_duration_minutes FROM doctor_schedules WHERE doctor_id = $1 AND day_of_week = $2',
-        [doctorId, dayOfWeek]
+        'SELECT start_time, end_time, slot_duration_minutes FROM doctor_schedules WHERE doctor_id = $1 AND schedule_date = $2',
+        [doctorId, date]
       );
 
       if (scheduleResult.rows.length === 0) {
