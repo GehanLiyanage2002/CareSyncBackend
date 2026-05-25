@@ -10,31 +10,34 @@ class DoctorModel {
       ...row,
       specialization: decrypt(row.specialization),
       experience: decrypt(row.experience),
-      bio: decrypt(row.bio)
+      bio: decrypt(row.bio),
+      location: row.location || ''
     };
   }
 
   static async upsertProfile(doctorId, profileData) {
-    const { specialization, experience, bio } = profileData;
+    const { specialization, experience, bio, location } = profileData;
     const query = `
-      INSERT INTO doctor_profiles (doctor_id, specialization, experience, bio, updated_at)
-      VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP)
+      INSERT INTO doctor_profiles (doctor_id, specialization, experience, bio, location, updated_at)
+      VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP)
       ON CONFLICT (doctor_id) 
       DO UPDATE SET 
         specialization = EXCLUDED.specialization,
         experience = EXCLUDED.experience,
         bio = EXCLUDED.bio,
+        location = EXCLUDED.location,
         updated_at = CURRENT_TIMESTAMP
       RETURNING *;
     `;
-    const result = await db.query(query, [doctorId, encrypt(specialization), encrypt(experience), encrypt(bio)]);
+    const result = await db.query(query, [doctorId, encrypt(specialization), encrypt(experience), encrypt(bio), location || '']);
     const row = result.rows[0];
     if (!row) return row;
     return {
       ...row,
       specialization: decrypt(row.specialization),
       experience: decrypt(row.experience),
-      bio: decrypt(row.bio)
+      bio: decrypt(row.bio),
+      location: row.location || ''
     };
   }
 
