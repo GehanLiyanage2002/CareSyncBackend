@@ -78,6 +78,7 @@ class DoctorModel {
     const query = `
       SELECT 
         id, 
+        patient_id,
         token_number,
         appointment_date, 
         start_time, 
