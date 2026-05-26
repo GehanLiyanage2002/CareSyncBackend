@@ -76,5 +76,8 @@ function decrypt(encryptedText) {
 
 module.exports = {
   encrypt,
-  decrypt
+  decrypt,
+  // Exporting as requested for compatibility with upcoming steps
+  encryptText: encrypt,
+  decryptText: decrypt
 };

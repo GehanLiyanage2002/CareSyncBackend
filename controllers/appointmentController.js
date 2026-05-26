@@ -1,5 +1,6 @@
 const DoctorModel = require('../models/doctorModel');
 const db = require('../config/db');
+const { decrypt } = require('../utils/cryptoUtils');
 
 class AppointmentController {
   /**
@@ -13,12 +14,63 @@ class AppointmentController {
       // Toggle logic using the model
       const isAvailable = await DoctorModel.toggleAvailability(doctorId);
 
+      // Emit socket event to all clients
+      const io = req.app.get('io');
+      if (io) {
+        io.emit('doctorAvailabilityChanged', { doctor_id: doctorId, is_available: isAvailable });
+      }
+
       res.status(200).json({
         success: true,
         message: 'Availability updated successfully',
         is_available: isAvailable
       });
     } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * @route   GET /api/appointments/patient/my-appointments
+   * @desc    Get all appointments for the logged-in patient
+   * @access  Private (Patient only)
+   */
+  static async getPatientAppointments(req, res, next) {
+    try {
+      const patientId = req.user.id;
+
+      const result = await db.query(
+        `SELECT 
+          a.id,
+          a.token_number,
+          a.appointment_date,
+          a.start_time,
+          a.status,
+          a.payment_method,
+          a.created_at,
+          u.full_name AS doctor_name,
+          dp.specialization AS doctor_specialization,
+          a.doctor_id,
+          -- Check if a review already exists for this appointment
+          CASE WHEN r.id IS NOT NULL THEN true ELSE false END AS has_review
+        FROM appointments a
+        JOIN users u ON a.doctor_id = u.id
+        LEFT JOIN doctor_profiles dp ON dp.doctor_id = a.doctor_id
+        LEFT JOIN reviews r ON r.appointment_id = a.id
+        WHERE a.patient_id = $1
+        ORDER BY a.appointment_date DESC, a.start_time DESC`,
+        [patientId]
+      );
+
+      res.status(200).json({
+        success: true,
+        appointments: result.rows.map(row => ({
+          ...row,
+          doctor_specialization: decrypt(row.doctor_specialization)
+        }))
+      });
+    } catch (error) {
+      console.error('Error fetching patient appointments:', error);
       next(error);
     }
   }
@@ -72,8 +124,8 @@ class AppointmentController {
 
       // Fetch doctor's schedule for that day
       const scheduleResult = await db.query(
-        'SELECT start_time, end_time, slot_duration_minutes FROM doctor_schedules WHERE doctor_id = $1 AND day_of_week = $2',
-        [doctorId, dayOfWeek]
+        'SELECT start_time, end_time, slot_duration_minutes FROM doctor_schedules WHERE doctor_id = $1 AND schedule_date = $2',
+        [doctorId, date]
       );
 
       if (scheduleResult.rows.length === 0) {
@@ -125,6 +177,99 @@ class AppointmentController {
       });
     } catch (error) {
       console.error('Error in getAvailableSlots:', error);
+      next(error);
+    }
+  }
+  /**
+   * @route   POST /api/appointments
+   * @desc    Create a new appointment
+   * @access  Private (Patient only)
+   */
+  static async createAppointment(req, res, next) {
+    try {
+      const patientId = req.user.id;
+      const { 
+        doctor_id, 
+        appointment_date, 
+        start_time, 
+        patient_name, 
+        age, 
+        mobile_number, 
+        gender, 
+        email, 
+        payment_method 
+      } = req.body;
+
+      if (!doctor_id || !appointment_date || !start_time || !patient_name || !mobile_number) {
+        return res.status(400).json({ success: false, message: 'Missing required fields' });
+      }
+
+      // Check if slot is already booked (just in case)
+      const existing = await db.query(
+        "SELECT id FROM appointments WHERE doctor_id = $1 AND appointment_date = $2 AND start_time = $3 AND status != 'cancelled'",
+        [doctor_id, appointment_date, start_time]
+      );
+
+      if (existing.rows.length > 0) {
+        return res.status(400).json({ success: false, message: 'This slot is already booked. Please choose another.' });
+      }
+
+      // Generate token
+      const tokenNumber = 'CS-' + Math.floor(1000 + Math.random() * 9000);
+
+      // Insert appointment
+      const result = await db.query(
+        `INSERT INTO appointments (
+          patient_id, doctor_id, appointment_date, start_time, status, 
+          patient_name, age, mobile_number, gender, email, payment_method, token_number
+        ) VALUES ($1, $2, $3, $4, 'pending', $5, $6, $7, $8, $9, $10, $11) RETURNING *`,
+        [
+          patientId, doctor_id, appointment_date, start_time, 
+          patient_name, age, mobile_number, gender, email, payment_method, tokenNumber
+        ]
+      );
+
+      // Emit socket event
+      const io = req.app.get('io');
+      if (io) {
+        io.emit('slotBooked', { doctor_id, date: appointment_date, start_time });
+      }
+
+      res.status(201).json({
+        success: true,
+        message: 'Appointment booked successfully',
+        appointment: result.rows[0]
+      });
+
+    } catch (error) {
+      console.error('Error creating appointment:', error);
+      next(error);
+    }
+  }
+
+  /**
+   * @route   GET /api/appointments/configured-dates/:doctorId
+   * @desc    Get configured scheduled dates for a doctor (>= current date)
+   * @access  Public
+   */
+  static async getConfiguredDates(req, res, next) {
+    try {
+      const { doctorId } = req.params;
+      
+      const query = `
+        SELECT DISTINCT schedule_date 
+        FROM doctor_schedules 
+        WHERE doctor_id = $1 AND schedule_date >= CURRENT_DATE 
+        ORDER BY schedule_date ASC
+      `;
+      const result = await db.query(query, [doctorId]);
+      
+      res.status(200).json({
+        success: true,
+        dates: result.rows.map(row => row.schedule_date)
+      });
+    } catch (error) {
+      console.error('Error fetching configured dates:', error);
       next(error);
     }
   }

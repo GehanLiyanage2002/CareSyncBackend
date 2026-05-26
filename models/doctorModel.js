@@ -10,31 +10,34 @@ class DoctorModel {
       ...row,
       specialization: decrypt(row.specialization),
       experience: decrypt(row.experience),
-      bio: decrypt(row.bio)
+      bio: decrypt(row.bio),
+      location: row.location || ''
     };
   }
 
   static async upsertProfile(doctorId, profileData) {
-    const { specialization, experience, bio } = profileData;
+    const { specialization, experience, bio, location } = profileData;
     const query = `
-      INSERT INTO doctor_profiles (doctor_id, specialization, experience, bio, updated_at)
-      VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP)
+      INSERT INTO doctor_profiles (doctor_id, specialization, experience, bio, location, updated_at)
+      VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP)
       ON CONFLICT (doctor_id) 
       DO UPDATE SET 
         specialization = EXCLUDED.specialization,
         experience = EXCLUDED.experience,
         bio = EXCLUDED.bio,
+        location = EXCLUDED.location,
         updated_at = CURRENT_TIMESTAMP
       RETURNING *;
     `;
-    const result = await db.query(query, [doctorId, encrypt(specialization), encrypt(experience), encrypt(bio)]);
+    const result = await db.query(query, [doctorId, encrypt(specialization), encrypt(experience), encrypt(bio), location || '']);
     const row = result.rows[0];
     if (!row) return row;
     return {
       ...row,
       specialization: decrypt(row.specialization),
       experience: decrypt(row.experience),
-      bio: decrypt(row.bio)
+      bio: decrypt(row.bio),
+      location: row.location || ''
     };
   }
 
@@ -60,61 +63,62 @@ class DoctorModel {
     return result.rows[0].is_available;
   }
 
+  static async updateConsultationFee(doctorId, fee) {
+    const query = `
+      UPDATE doctor_profiles
+      SET consultation_fee = $2, updated_at = CURRENT_TIMESTAMP
+      WHERE doctor_id = $1
+      RETURNING *;
+    `;
+    const result = await db.query(query, [doctorId, fee]);
+    return result.rows[0];
+  }
+
   static async getAppointmentsByDoctorId(doctorId) {
     const query = `
       SELECT 
-        a.id, 
-        a.appointment_date, 
-        a.start_time, 
-        a.status,
-        u.full_name as patient_name,
-        u.mobile_number as patient_contact
-      FROM appointments a
-      JOIN users u ON a.patient_id = u.id
-      WHERE a.doctor_id = $1 
-      ORDER BY a.appointment_date ASC, a.start_time ASC
+        id, 
+        patient_id,
+        token_number,
+        appointment_date, 
+        start_time, 
+        status,
+        patient_name,
+        age as patient_age,
+        gender as patient_gender,
+        mobile_number as patient_contact,
+        payment_method
+      FROM appointments 
+      WHERE doctor_id = $1 
+      ORDER BY appointment_date ASC, start_time ASC
     `;
     const result = await db.query(query, [doctorId]);
-    // The users table has mobile_number encrypted, we should decrypt it if it's fetched
-    return result.rows.map(row => ({
-      ...row,
-      patient_contact: row.patient_contact ? decrypt(row.patient_contact) : null
-    }));
+    return result.rows;
   }
 
   static async updateAppointmentStatus(appointmentId, doctorId, status) {
     const query = `
       UPDATE appointments 
-      SET status = $1, updated_at = CURRENT_TIMESTAMP
+      SET status = $1
       WHERE id = $2 AND doctor_id = $3
       RETURNING *;
     `;
     const result = await db.query(query, [status, appointmentId, doctorId]);
-    const row = result.rows[0];
-    if (!row) return row;
-    return {
-      ...row,
-      patient_name: decrypt(row.patient_name),
-      patient_age: decrypt(row.patient_age),
-      patient_gender: decrypt(row.patient_gender),
-      patient_contact: decrypt(row.patient_contact),
-      appointment_time: decrypt(row.appointment_time),
-      reason: decrypt(row.reason)
-    };
+    return result.rows[0];
   }
   static async upsertSchedule(doctorId, scheduleData) {
-    const { day_of_week, start_time, end_time, slot_duration_minutes } = scheduleData;
+    const { schedule_date, start_time, end_time, slot_duration_minutes } = scheduleData;
     const query = `
-      INSERT INTO doctor_schedules (doctor_id, day_of_week, start_time, end_time, slot_duration_minutes)
+      INSERT INTO doctor_schedules (doctor_id, schedule_date, start_time, end_time, slot_duration_minutes)
       VALUES ($1, $2, $3, $4, $5)
-      ON CONFLICT (doctor_id, day_of_week) 
+      ON CONFLICT (doctor_id, schedule_date) 
       DO UPDATE SET 
         start_time = EXCLUDED.start_time,
         end_time = EXCLUDED.end_time,
         slot_duration_minutes = EXCLUDED.slot_duration_minutes
       RETURNING *;
     `;
-    const result = await db.query(query, [doctorId, day_of_week, start_time, end_time, slot_duration_minutes]);
+    const result = await db.query(query, [doctorId, schedule_date, start_time, end_time, slot_duration_minutes]);
     return result.rows[0];
   }
 
@@ -122,7 +126,7 @@ class DoctorModel {
     const query = `
       SELECT * FROM doctor_schedules 
       WHERE doctor_id = $1 
-      ORDER BY day_of_week ASC
+      ORDER BY schedule_date ASC
     `;
     const result = await db.query(query, [doctorId]);
     return result.rows;

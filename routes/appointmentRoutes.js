@@ -11,6 +11,14 @@ router.put(
   AppointmentController.toggleAvailability
 );
 
+// Route to get patient's own appointments
+router.get(
+  '/patient/my-appointments',
+  verifyToken,
+  requireRole(['Patient']),
+  AppointmentController.getPatientAppointments
+);
+
 // Route to get doctor's appointments
 router.get(
   '/doctor/my-appointments', 
@@ -23,6 +31,20 @@ router.get(
 router.get(
   '/slots/:doctorId',
   AppointmentController.getAvailableSlots
+);
+
+// Route to get configured dates for a doctor
+router.get(
+  '/configured-dates/:doctorId',
+  AppointmentController.getConfiguredDates
+);
+
+// Route to create a new appointment
+router.post(
+  '/',
+  verifyToken,
+  requireRole(['Patient', 'Doctor']),
+  AppointmentController.createAppointment
 );
 
 module.exports = router;

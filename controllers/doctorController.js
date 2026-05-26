@@ -24,11 +24,11 @@ exports.getProfile = async (req, res) => {
 exports.updateProfile = async (req, res) => {
   try {
     const doctorId = req.user.id;
-    const { specialization, experience, bio, full_name, email, mobile_number } = req.body;
+    const { specialization, experience, bio, full_name, email, mobile_number, location } = req.body;
     
     // Upsert profile data
     const updatedProfile = await DoctorModel.upsertProfile(doctorId, {
-      specialization, experience, bio
+      specialization, experience, bio, location
     });
 
     // Optionally update user data if provided
@@ -42,6 +42,30 @@ exports.updateProfile = async (req, res) => {
     res.status(200).json({ success: true, profile: updatedProfile, message: 'Profile updated successfully' });
   } catch (error) {
     console.error('Error updating doctor profile:', error);
+    res.status(500).json({ success: false, message: 'Server Error' });
+  }
+};
+
+exports.updateFee = async (req, res) => {
+  try {
+    const doctorId = req.user.id;
+    const { fee } = req.body;
+    
+    if (fee === undefined || isNaN(fee) || fee < 0) {
+      return res.status(400).json({ success: false, message: 'Valid consultation fee is required' });
+    }
+
+    const updatedProfile = await DoctorModel.updateConsultationFee(doctorId, fee);
+    
+    // Emit socket event for realtime update
+    const io = req.app.get('io');
+    if (io) {
+      io.emit('doctorFeeChanged', { doctor_id: doctorId, consultation_fee: fee });
+    }
+    
+    res.status(200).json({ success: true, profile: updatedProfile, message: 'Consultation fee updated successfully' });
+  } catch (error) {
+    console.error('Error updating consultation fee:', error);
     res.status(500).json({ success: false, message: 'Server Error' });
   }
 };
@@ -73,6 +97,16 @@ exports.updateAppointmentStatus = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Appointment not found' });
     }
 
+    // Emit socket event for real-time patient update
+    const io = req.app.get('io');
+    if (io) {
+      io.emit('appointmentStatusChanged', {
+        appointment_id: id,
+        status,
+        patient_id: updated.patient_id
+      });
+    }
+
     res.status(200).json({ success: true, appointment: updated });
   } catch (error) {
     console.error('Error updating appointment status:', error);
@@ -94,14 +128,14 @@ exports.getSchedule = async (req, res) => {
 exports.updateSchedule = async (req, res) => {
   try {
     const doctorId = req.user.id;
-    const { day_of_week, start_time, end_time, slot_duration_minutes } = req.body;
+    const { schedule_date, start_time, end_time, slot_duration_minutes } = req.body;
 
-    if (day_of_week < 0 || day_of_week > 6) {
-      return res.status(400).json({ success: false, message: 'Invalid day of week (0-6)' });
+    if (!schedule_date) {
+      return res.status(400).json({ success: false, message: 'Schedule date is required' });
     }
 
     const updatedSchedule = await DoctorModel.upsertSchedule(doctorId, {
-      day_of_week, start_time, end_time, slot_duration_minutes
+      schedule_date, start_time, end_time, slot_duration_minutes
     });
 
     res.status(200).json({ success: true, schedule: updatedSchedule, message: 'Schedule updated successfully' });
