@@ -2,26 +2,8 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 
-// Ensure uploads directory exists
-const uploadDir = path.join(__dirname, '../uploads');
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir, { recursive: true });
-}
-
-// Configure storage
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, uploadDir);
-  },
-  filename: function (req, file, cb) {
-    // Generate a unique suffix using timestamp and random number
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    // Extract the original file extension
-    const ext = path.extname(file.originalname);
-    // e.g., file-17154219123-123456789.pdf
-    cb(null, file.fieldname + '-' + uniqueSuffix + ext);
-  }
-});
+// Configure memory storage to store files as buffers in RAM instead of disk
+const storage = multer.memoryStorage();
 
 // File filter for PDF, JPEG, PNG
 const fileFilter = (req, file, cb) => {
