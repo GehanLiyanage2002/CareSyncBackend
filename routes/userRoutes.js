@@ -21,4 +21,7 @@ router.put('/doctor-profile', verifyToken, UserController.updateDoctorProfile);
 // Route to get list of available doctors (Public or token depending on needs, we make it public so users can see doctors before login? Let's make it public)
 router.get('/doctors', UserController.getAvailableDoctors);
 
+// Route to register/update Face ID
+router.put('/face-id', verifyToken, UserController.updateFaceId);
+
 module.exports = router;

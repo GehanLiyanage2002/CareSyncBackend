@@ -230,7 +230,7 @@ class UserController {
           'https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?auto=format&fit=crop&q=80&w=400' as image
         FROM users u
         LEFT JOIN doctor_profiles dp ON u.id = dp.doctor_id
-        WHERE u.role = 'Doctor'
+        WHERE u.role = 'Doctor' AND dp.is_approved = true
       `;
       
       const result = await db.query(query);
@@ -252,6 +252,49 @@ class UserController {
     } catch (error) {
       console.error("Error fetching doctors:", error);
       res.status(500).json({ success: false, message: 'Server Error' });
+    }
+  }
+
+  /**
+   * @route   PUT /api/users/face-id
+   * @desc    Update face descriptor for the logged-in user
+   * @access  Private
+   */
+  static async updateFaceId(req, res, next) {
+    try {
+      const userId = req.user.id;
+      const { faceDescriptor } = req.body;
+
+      if (!faceDescriptor || !Array.isArray(faceDescriptor)) {
+        res.status(400);
+        return next(new Error('Invalid face descriptor provided.'));
+      }
+
+      const db = require('../config/db');
+      const { encrypt } = require('../utils/cryptoUtils');
+
+      const encryptedDescriptor = encrypt(JSON.stringify(faceDescriptor));
+      
+      const query = `
+        UPDATE users 
+        SET face_descriptor = $1
+        WHERE id = $2
+        RETURNING id;
+      `;
+      
+      const result = await db.query(query, [encryptedDescriptor, userId]);
+
+      if (result.rowCount === 0) {
+        res.status(404);
+        return next(new Error('User not found.'));
+      }
+
+      res.status(200).json({
+        success: true,
+        message: 'Face ID registered successfully'
+      });
+    } catch (error) {
+      next(error);
     }
   }
 }
