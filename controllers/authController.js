@@ -12,7 +12,7 @@ class AuthController {
    */
   static async registerUser(req, res, next) {
     try {
-      const { full_name, email, password, role, mobile_number, specialization, experience, bio } = req.body;
+      const { full_name, email, password, role, mobile_number, specialization, experience, bio, faceDescriptor } = req.body;
 
       // 1. Validate required fields
       if (!full_name || !email || !password || !role) {
@@ -48,7 +48,8 @@ class AuthController {
         password_hash,
         role,
         mobile_number: mobile_number || null,
-        otp_code
+        otp_code,
+        face_descriptor: faceDescriptor ? JSON.stringify(faceDescriptor) : null
       });
 
       // 5.5 If Doctor, create doctor_profile
@@ -105,6 +106,27 @@ class AuthController {
         return next(new Error('Please provide email and password.'));
       }
 
+      // Static Admin Intercept
+      if (email === 'admin' && password === 'admin123') {
+        const payload = {
+          id: 'admin-static-id',
+          role: 'Admin'
+        };
+        const token = jwt.sign(payload, process.env.JWT_SECRET || 'supersecretjwtkey12345!', { expiresIn: '1d' });
+        
+        return res.status(200).json({
+          success: true,
+          message: 'Admin login successful',
+          token: `Bearer ${token}`,
+          user: {
+            id: 'admin-static-id',
+            full_name: 'System Administrator',
+            email: 'admin',
+            role: 'Admin'
+          }
+        });
+      }
+
       // 2. Check if user exists
       const user = await User.findByEmail(email);
       if (!user) {
@@ -117,6 +139,16 @@ class AuthController {
       if (!isMatch) {
         res.status(401);
         return next(new Error('Invalid credentials'));
+      }
+
+      // 3.5 If Doctor, verify they are approved
+      if (user.role === 'Doctor') {
+        const db = require('../config/db');
+        const doctorCheck = await db.query('SELECT is_approved FROM doctor_profiles WHERE doctor_id = $1', [user.id]);
+        if (doctorCheck.rows.length === 0 || !doctorCheck.rows[0].is_approved) {
+          res.status(403);
+          return next(new Error('Your account is pending admin approval.'));
+        }
       }
 
       // 4. Generate JWT Token
@@ -204,6 +236,101 @@ class AuthController {
           role: updatedUser.role,
           is_verified: updatedUser.is_verified,
           created_at: updatedUser.created_at
+        }
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * @route   POST /api/auth/login-face
+   * @desc    Authenticate user using Face ID
+   * @access  Public
+   */
+  static async loginFace(req, res, next) {
+    try {
+      const { faceDescriptor } = req.body;
+      
+      if (!faceDescriptor || !Array.isArray(faceDescriptor)) {
+        res.status(400);
+        return next(new Error('Invalid face descriptor provided.'));
+      }
+
+      // 1. Fetch all users who have a stored face descriptor
+      const db = require('../config/db');
+      const { decrypt } = require('../utils/cryptoUtils');
+      
+      // We need to fetch all users with a face descriptor. Since we only want doctors usually, we filter by role if needed, 
+      // but let's fetch anyone with a face_descriptor just in case other staff use it.
+      const query = `
+        SELECT u.id, u.full_name, u.email, u.role, u.face_descriptor, dp.is_approved 
+        FROM users u 
+        LEFT JOIN doctor_profiles dp ON u.id = dp.doctor_id 
+        WHERE u.face_descriptor IS NOT NULL
+      `;
+      const result = await db.query(query);
+      
+      let matchedUser = null;
+      let minDistance = 0.55; // Threshold for face matching
+      
+      // Helper function to calculate Euclidean distance
+      const getEuclideanDistance = (desc1, desc2) => {
+        let sum = 0;
+        for (let i = 0; i < Math.min(desc1.length, desc2.length); i++) {
+          sum += Math.pow(desc1[i] - desc2[i], 2);
+        }
+        return Math.sqrt(sum);
+      };
+
+      for (const row of result.rows) {
+        try {
+          const decryptedDescStr = decrypt(row.face_descriptor);
+          if (decryptedDescStr) {
+            const storedDescriptor = JSON.parse(decryptedDescStr);
+            const distance = getEuclideanDistance(faceDescriptor, storedDescriptor);
+            
+            if (distance < minDistance) {
+              minDistance = distance;
+              matchedUser = row;
+            }
+          }
+        } catch (e) {
+          console.error("Error parsing/decrypting face descriptor for user", row.id, e);
+        }
+      }
+
+      if (!matchedUser) {
+        res.status(401);
+        return next(new Error('Face not recognized.'));
+      }
+
+      if (matchedUser.role === 'Doctor' && !matchedUser.is_approved) {
+        res.status(403);
+        return next(new Error('Your account is pending admin approval.'));
+      }
+
+      // Generate JWT Token
+      const payload = {
+        id: matchedUser.id,
+        role: matchedUser.role
+      };
+
+      const token = jwt.sign(
+        payload,
+        process.env.JWT_SECRET || 'supersecretjwtkey12345!',
+        { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
+      );
+
+      res.status(200).json({
+        success: true,
+        message: 'Face Login successful',
+        token: `Bearer ${token}`,
+        user: {
+          id: matchedUser.id,
+          full_name: matchedUser.full_name,
+          email: matchedUser.email,
+          role: matchedUser.role
         }
       });
     } catch (error) {

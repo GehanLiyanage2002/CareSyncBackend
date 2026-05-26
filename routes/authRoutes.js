@@ -11,4 +11,7 @@ router.post('/login', AuthController.loginUser);
 // POST /api/auth/verify-otp
 router.post('/verify-otp', AuthController.verifyOTP);
 
+// POST /api/auth/login-face
+router.post('/login-face', AuthController.loginFace);
+
 module.exports = router;

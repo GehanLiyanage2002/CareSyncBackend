@@ -8,6 +8,7 @@ const doctorRoutes = require('./doctorRoutes');
 const appointmentRoutes = require('./appointmentRoutes');
 const reviewRoutes = require('./reviewRoutes');
 const medicalReportRoutes = require('./medicalReportRoutes');
+const adminRoutes = require('./adminRoutes');
 
 // Health check endpoint at root of /api
 router.get('/health', (req, res) => {
@@ -26,5 +27,6 @@ router.use('/doctor', doctorRoutes);
 router.use('/appointments', appointmentRoutes);
 router.use('/reviews', reviewRoutes);
 router.use('/reports', medicalReportRoutes);
+router.use('/admin', adminRoutes);
 
 module.exports = router;
