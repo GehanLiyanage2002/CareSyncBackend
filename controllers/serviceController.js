@@ -46,6 +46,12 @@ class ServiceController {
       `;
       const result = await db.query(query, [name, Number(price)]);
 
+      // Emit socket event for real-time updates
+      const io = req.app?.get('io');
+      if (io) {
+        io.emit('serviceAdded', { service: result.rows[0] });
+      }
+
       res.status(201).json({
         success: true,
         message: 'Service created successfully',
