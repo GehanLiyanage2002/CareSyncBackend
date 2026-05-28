@@ -109,6 +109,33 @@ class ReviewController {
   }
 
   /**
+   * @route   GET /api/reviews/public/recent
+   * @desc    Get recent reviews across all doctors (for landing page)
+   * @access  Public
+   */
+  static async getRecentPublicReviews(req, res) {
+    try {
+      const result = await db.query(
+        `SELECT r.id, r.rating, r.comment, r.patient_name, r.created_at,
+                r.doctor_id, u.full_name AS doctor_name
+         FROM reviews r
+         JOIN users u ON r.doctor_id = u.id
+         WHERE r.comment IS NOT NULL AND r.comment != ''
+         ORDER BY r.rating DESC, r.created_at DESC
+         LIMIT 9`
+      );
+
+      res.status(200).json({
+        success: true,
+        reviews: result.rows
+      });
+    } catch (error) {
+      console.error('Error fetching recent reviews:', error);
+      res.status(500).json({ success: false, message: 'Server error' });
+    }
+  }
+
+  /**
    * @route   GET /api/reviews/my-review/:appointmentId
    * @desc    Check if patient already reviewed a specific appointment
    * @access  Private (Patient)
