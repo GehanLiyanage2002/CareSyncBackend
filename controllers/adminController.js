@@ -33,14 +33,14 @@ class AdminController {
         : `SELECT COUNT(*) FROM appointments`;
       const apptCount = await db.query(apptCountQuery, params);
       
-      const completedCount = await db.query(`SELECT COUNT(*) FROM appointments WHERE status = 'completed' ${dateFilterAppts}`, params);
-      const canceledCount = await db.query(`SELECT COUNT(*) FROM appointments WHERE status = 'cancelled' ${dateFilterAppts}`, params);
+      const completedCount = await db.query(`SELECT COUNT(*) FROM appointments WHERE status = 'Completed' ${dateFilterAppts}`, params);
+      const canceledCount = await db.query(`SELECT COUNT(*) FROM appointments WHERE status = 'Cancelled' ${dateFilterAppts}`, params);
       
       const revenueQuery = `
         SELECT COALESCE(SUM(dp.consultation_fee), 0) as total_earnings
         FROM appointments a
         JOIN doctor_profiles dp ON a.doctor_id = dp.doctor_id
-        WHERE a.status = 'completed' ${dateFilterAppts}
+        WHERE a.status = 'Completed' ${dateFilterAppts}
       `;
       const revenueResult = await db.query(revenueQuery, params);
 
@@ -159,13 +159,13 @@ class AdminController {
     try {
       const query = `
         SELECT 
-          a.id, a.appointment_date as date, a.appointment_time as time, a.status, a.reason,
+          a.id, a.appointment_date as date, a.start_time as time, a.status, a.reason,
           p.full_name as patient_name,
           d.full_name as doctor_name
         FROM appointments a
         JOIN users p ON a.patient_id = p.id
         JOIN users d ON a.doctor_id = d.id
-        ORDER BY a.appointment_date DESC, a.appointment_time DESC
+        ORDER BY a.appointment_date DESC, a.start_time DESC
       `;
       const result = await db.query(query);
       
@@ -201,10 +201,10 @@ class AdminController {
           d.full_name as doctor_name,
           dp.specialization,
           COUNT(a.id) as total_appointments,
-          SUM(CASE WHEN a.status = 'completed' THEN 1 ELSE 0 END) as completed_appointments,
-          SUM(CASE WHEN a.status = 'cancelled' THEN 1 ELSE 0 END) as canceled_appointments,
+          SUM(CASE WHEN a.status = 'Completed' THEN 1 ELSE 0 END) as completed_appointments,
+          SUM(CASE WHEN a.status = 'Cancelled' THEN 1 ELSE 0 END) as canceled_appointments,
           COALESCE(dp.consultation_fee, 0) as consultation_fee,
-          (SUM(CASE WHEN a.status = 'completed' THEN 1 ELSE 0 END) * COALESCE(dp.consultation_fee, 0)) as total_earnings
+          (SUM(CASE WHEN a.status = 'Completed' THEN 1 ELSE 0 END) * COALESCE(dp.consultation_fee, 0)) as total_earnings
         FROM users d
         LEFT JOIN doctor_profiles dp ON d.id = dp.doctor_id
         LEFT JOIN appointments a ON a.doctor_id = d.id ${joinCondition}

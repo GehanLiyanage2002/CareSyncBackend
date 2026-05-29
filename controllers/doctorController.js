@@ -98,9 +98,11 @@ exports.updateAppointmentStatus = async (req, res) => {
   try {
     const doctorId = req.user.id;
     const { id } = req.params;
-    const { status } = req.body;
+    const { status: reqStatus } = req.body;
+    // Map status to TitleCase
+    const status = reqStatus ? reqStatus.charAt(0).toUpperCase() + reqStatus.slice(1).toLowerCase() : '';
 
-    if (!['pending', 'confirmed', 'completed', 'cancelled'].includes(status)) {
+    if (!['Pending', 'Confirmed', 'Completed', 'Cancelled'].includes(status)) {
       return res.status(400).json({ success: false, message: 'Invalid status' });
     }
 

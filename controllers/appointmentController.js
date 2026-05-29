@@ -46,6 +46,7 @@ class AppointmentController {
           a.appointment_date,
           a.start_time,
           a.status,
+          a.is_telemedicine,
           a.payment_method,
           a.created_at,
           u.full_name AS doctor_name,
@@ -66,6 +67,7 @@ class AppointmentController {
         success: true,
         appointments: result.rows.map(row => ({
           ...row,
+          status: row.status.toLowerCase(),
           doctor_specialization: decrypt(row.doctor_specialization)
         }))
       });
@@ -157,8 +159,9 @@ class AppointmentController {
       }
 
       // Fetch booked appointments for that date
+      console.log('Querying booked appointments with: status != Cancelled');
       const appointmentsResult = await db.query(
-        "SELECT start_time FROM appointments WHERE doctor_id = $1 AND appointment_date = $2 AND status != 'cancelled'",
+        "SELECT start_time FROM appointments WHERE doctor_id = $1 AND appointment_date = $2 AND status != 'Cancelled'",
         [doctorId, date]
       );
 
@@ -197,7 +200,8 @@ class AppointmentController {
         mobile_number, 
         gender, 
         email, 
-        payment_method 
+        payment_method,
+        is_telemedicine 
       } = req.body;
 
       if (!doctor_id || !appointment_date || !start_time || !patient_name || !mobile_number) {
@@ -206,12 +210,29 @@ class AppointmentController {
 
       // Check if slot is already booked (just in case)
       const existing = await db.query(
-        "SELECT id FROM appointments WHERE doctor_id = $1 AND appointment_date = $2 AND start_time = $3 AND status != 'cancelled'",
+        "SELECT id FROM appointments WHERE doctor_id = $1 AND appointment_date = $2 AND start_time = $3 AND status != 'Cancelled'",
         [doctor_id, appointment_date, start_time]
       );
 
       if (existing.rows.length > 0) {
         return res.status(400).json({ success: false, message: 'This slot is already booked. Please choose another.' });
+      }
+
+      // Verify telemedicine rules based on specialization
+      const docProfile = await db.query('SELECT specialization FROM doctor_profiles WHERE doctor_id = $1', [doctor_id]);
+      const { decrypt } = require('../utils/cryptoUtils');
+      const spec = docProfile.rows[0]?.specialization ? decrypt(docProfile.rows[0].specialization).toLowerCase() : '';
+      
+      const isPsychology = spec.includes('psychology') || spec.includes('psychiatry');
+      
+      if (isPsychology) {
+        if (!is_telemedicine) {
+          return res.status(400).json({ success: false, message: 'Psychology doctors can only be booked for Telemedicine video consultations.' });
+        }
+      } else {
+        if (is_telemedicine) {
+          return res.status(400).json({ success: false, message: 'Telemedicine is only available for Psychology doctors.' });
+        }
       }
 
       // Generate token
@@ -221,11 +242,11 @@ class AppointmentController {
       const result = await db.query(
         `INSERT INTO appointments (
           patient_id, doctor_id, appointment_date, start_time, status, 
-          patient_name, age, mobile_number, gender, email, payment_method, token_number
-        ) VALUES ($1, $2, $3, $4, 'pending', $5, $6, $7, $8, $9, $10, $11) RETURNING *`,
+          patient_name, age, mobile_number, gender, email, payment_method, token_number, is_telemedicine
+        ) VALUES ($1, $2, $3, $4, 'Pending', $5, $6, $7, $8, $9, $10, $11, $12) RETURNING *`,
         [
           patientId, doctor_id, appointment_date, start_time, 
-          patient_name, age, mobile_number, gender, email, payment_method, tokenNumber
+          patient_name, age, mobile_number, gender, email, payment_method, tokenNumber, is_telemedicine || false
         ]
       );
 

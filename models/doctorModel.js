@@ -86,6 +86,7 @@ class DoctorModel {
         appointment_date, 
         start_time, 
         status,
+        is_telemedicine,
         patient_name,
         age as patient_age,
         gender as patient_gender,
@@ -96,7 +97,7 @@ class DoctorModel {
       ORDER BY appointment_date ASC, start_time ASC
     `;
     const result = await db.query(query, [doctorId]);
-    return result.rows;
+    return result.rows.map(row => ({ ...row, status: row.status.toLowerCase() }));
   }
 
   static async updateAppointmentStatus(appointmentId, doctorId, status) {
