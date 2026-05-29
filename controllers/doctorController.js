@@ -24,11 +24,11 @@ exports.getProfile = async (req, res) => {
 exports.updateProfile = async (req, res) => {
   try {
     const doctorId = req.user.id;
-    const { specialization, experience, bio, full_name, email, mobile_number, location } = req.body;
+    const { specialization, experience, bio, full_name, email, mobile_number, location, qualifications } = req.body;
     
     // Upsert profile data
     const updatedProfile = await DoctorModel.upsertProfile(doctorId, {
-      specialization, experience, bio, location
+      specialization, experience, bio, location, qualifications
     });
 
     // Optionally update user data if provided
@@ -37,6 +37,19 @@ exports.updateProfile = async (req, res) => {
         'UPDATE users SET full_name = COALESCE($1, full_name), mobile_number = COALESCE($2, mobile_number) WHERE id = $3',
         [full_name, mobile_number, doctorId]
       );
+    }
+
+    // Emit socket event for real-time update on doctor profile pages
+    const io = req.app.get('io');
+    if (io) {
+      io.emit('doctorProfileUpdated', {
+        doctor_id: doctorId,
+        location: updatedProfile.location,
+        specialization: updatedProfile.specialization,
+        experience: updatedProfile.experience,
+        bio: updatedProfile.bio,
+        qualifications: updatedProfile.qualifications
+      });
     }
 
     res.status(200).json({ success: true, profile: updatedProfile, message: 'Profile updated successfully' });

@@ -35,6 +35,9 @@ router.get(
   ReviewController.getMyReview
 );
 
+// Get recent reviews for landing page
+router.get('/public/recent', ReviewController.getRecentPublicReviews);
+
 // Get all reviews for a doctor (public)
 router.get('/:doctorId', ReviewController.getDoctorReviews);
 
