@@ -136,14 +136,14 @@ class UserController {
     try {
       const userId = req.user.id;
       const userRole = req.user.role;
-      const { specialization, experience, bio, location } = req.body;
+      const { specialization, experience, bio, location, qualifications } = req.body;
 
       if (userRole !== 'Doctor') {
         res.status(403);
         return next(new Error('Only doctors can update their professional profile.'));
       }
 
-      const updatedProfile = await DoctorModel.upsertProfile(userId, { specialization, experience, bio, location });
+      const updatedProfile = await DoctorModel.upsertProfile(userId, { specialization, experience, bio, location, qualifications });
 
       if (!updatedProfile) {
         res.status(400);
@@ -158,7 +158,8 @@ class UserController {
           location: updatedProfile.location,
           specialization: updatedProfile.specialization,
           experience: updatedProfile.experience,
-          bio: updatedProfile.bio
+          bio: updatedProfile.bio,
+          qualifications: updatedProfile.qualifications
         });
       }
 
@@ -223,7 +224,7 @@ class UserController {
           -- Provide some dummy data for frontend mapping until we fully implement them
           '95%' as "successRate", 
           '1k+' as patients, 
-          'MBBS, MD' as qualifications,
+          COALESCE(dp.qualifications, '') as qualifications,
           COALESCE(dp.location, 'Not specified') as location,
           COALESCE(dp.consultation_fee, 1500) as "consultationFee",
           '4.8' as rating,
@@ -241,7 +242,8 @@ class UserController {
           ...doc,
           specialization: doc.specialization ? decrypt(doc.specialization) : 'Not Specified',
           experience: doc.experience ? decrypt(doc.experience) : 'Not Specified',
-          about: doc.about ? decrypt(doc.about) : 'No bio available'
+          about: doc.about ? decrypt(doc.about) : 'No bio available',
+          qualifications: doc.qualifications ? decrypt(doc.qualifications) : 'Not Specified'
         };
       });
 
