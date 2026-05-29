@@ -69,7 +69,7 @@ class AdminController {
     try {
       const query = `
         SELECT u.id, u.full_name, u.email, u.mobile_number, u.created_at, 
-               dp.specialization, dp.experience, dp.is_approved, dp.consultation_fee
+               dp.specialization, dp.experience, dp.is_approved, dp.consultation_fee, dp.is_available
         FROM users u
         LEFT JOIN doctor_profiles dp ON u.id = dp.doctor_id
         WHERE u.role = 'Doctor'
