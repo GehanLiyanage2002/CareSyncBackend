@@ -10,20 +10,35 @@ class AdminController {
    */
   static async getStats(req, res, next) {
     try {
-      const patientCount = await db.query("SELECT COUNT(*) FROM users WHERE role = 'Patient'");
-      const doctorCount = await db.query("SELECT COUNT(*) FROM users WHERE role = 'Doctor'");
-      const apptCount = await db.query("SELECT COUNT(*) FROM appointments");
+      const { startDate, endDate } = req.query;
+      let dateFilterUsers = "";
+      let dateFilterAppts = "";
+      let params = [];
+
+      if (startDate && endDate) {
+        dateFilterUsers = "AND created_at >= $1 AND created_at <= $2";
+        dateFilterAppts = "AND appointment_date >= $1 AND appointment_date <= $2";
+        params = [startDate, endDate];
+      }
+
+      const patientCount = await db.query(`SELECT COUNT(*) FROM users WHERE role = 'Patient' ${dateFilterUsers}`, params);
+      const doctorCount = await db.query(`SELECT COUNT(*) FROM users WHERE role = 'Doctor' ${dateFilterUsers}`, params);
       
-      // Calculate total revenue (assuming platform fee or just total sum of consultation fees)
-      // Since consultation_fee is in doctor_profiles, we join it with appointments where status is completed
-      // For now, let's just sum up all completed appointments if consultation_fee exists
+      const apptCountQuery = startDate 
+        ? `SELECT COUNT(*) FROM appointments WHERE appointment_date >= $1 AND appointment_date <= $2` 
+        : `SELECT COUNT(*) FROM appointments`;
+      const apptCount = await db.query(apptCountQuery, params);
+      
+      const completedCount = await db.query(`SELECT COUNT(*) FROM appointments WHERE status = 'completed' ${dateFilterAppts}`, params);
+      const canceledCount = await db.query(`SELECT COUNT(*) FROM appointments WHERE status = 'cancelled' ${dateFilterAppts}`, params);
+      
       const revenueQuery = `
         SELECT COALESCE(SUM(dp.consultation_fee), 0) as total_earnings
         FROM appointments a
         JOIN doctor_profiles dp ON a.doctor_id = dp.doctor_id
-        WHERE a.status = 'Completed'
+        WHERE a.status = 'completed' ${dateFilterAppts}
       `;
-      const revenueResult = await db.query(revenueQuery);
+      const revenueResult = await db.query(revenueQuery, params);
 
       res.status(200).json({
         success: true,
@@ -31,6 +46,8 @@ class AdminController {
           totalPatients: parseInt(patientCount.rows[0].count),
           totalDoctors: parseInt(doctorCount.rows[0].count),
           totalAppointments: parseInt(apptCount.rows[0].count),
+          totalCompleted: parseInt(completedCount.rows[0].count),
+          totalCancelled: parseInt(canceledCount.rows[0].count),
           totalRevenue: parseFloat(revenueResult.rows[0].total_earnings)
         }
       });
@@ -166,22 +183,32 @@ class AdminController {
    */
   static async getEarnings(req, res, next) {
     try {
+      const { startDate, endDate } = req.query;
+      let params = [];
+      let joinCondition = '';
+      if (startDate && endDate) {
+        joinCondition = 'AND a.appointment_date >= $1 AND a.appointment_date <= $2';
+        params = [startDate, endDate];
+      }
+
       const query = `
         SELECT 
           d.id as doctor_id,
           d.full_name as doctor_name,
           dp.specialization,
-          COUNT(a.id) as completed_appointments,
+          COUNT(a.id) as total_appointments,
+          SUM(CASE WHEN a.status = 'completed' THEN 1 ELSE 0 END) as completed_appointments,
+          SUM(CASE WHEN a.status = 'cancelled' THEN 1 ELSE 0 END) as canceled_appointments,
           COALESCE(dp.consultation_fee, 0) as consultation_fee,
-          (COUNT(a.id) * COALESCE(dp.consultation_fee, 0)) as total_earnings
+          (SUM(CASE WHEN a.status = 'completed' THEN 1 ELSE 0 END) * COALESCE(dp.consultation_fee, 0)) as total_earnings
         FROM users d
         LEFT JOIN doctor_profiles dp ON d.id = dp.doctor_id
-        LEFT JOIN appointments a ON a.doctor_id = d.id AND a.status = 'Completed'
+        LEFT JOIN appointments a ON a.doctor_id = d.id ${joinCondition}
         WHERE d.role = 'Doctor'
         GROUP BY d.id, d.full_name, dp.specialization, dp.consultation_fee
         ORDER BY total_earnings DESC
       `;
-      const result = await db.query(query);
+      const result = await db.query(query, params);
 
       const earnings = result.rows.map(row => ({
         ...row,
