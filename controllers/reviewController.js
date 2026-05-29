@@ -34,7 +34,7 @@ class ReviewController {
         return res.status(403).json({ success: false, message: 'You can only review your own appointments' });
       }
 
-      if (appt.status !== 'completed') {
+      if (appt.status !== 'Completed') {
         return res.status(400).json({ success: false, message: 'You can only review completed appointments' });
       }
 
