@@ -80,7 +80,7 @@ class ReviewController {
       const { doctorId } = req.params;
 
       const result = await db.query(
-        `SELECT r.id, r.rating, r.comment, r.patient_name, r.created_at,
+        `SELECT r.id, r.rating, r.comment, r.patient_name, r.patient_id, r.created_at,
                 a.appointment_date
          FROM reviews r
          LEFT JOIN appointments a ON r.appointment_id = a.id
@@ -104,6 +104,33 @@ class ReviewController {
       });
     } catch (error) {
       console.error('Error fetching reviews:', error);
+      res.status(500).json({ success: false, message: 'Server error' });
+    }
+  }
+
+  /**
+   * @route   GET /api/reviews/public/recent
+   * @desc    Get recent reviews across all doctors (for landing page)
+   * @access  Public
+   */
+  static async getRecentPublicReviews(req, res) {
+    try {
+      const result = await db.query(
+        `SELECT r.id, r.rating, r.comment, r.patient_name, r.patient_id, r.created_at,
+                r.doctor_id, u.full_name AS doctor_name
+         FROM reviews r
+         JOIN users u ON r.doctor_id = u.id
+         WHERE r.comment IS NOT NULL AND r.comment != ''
+         ORDER BY r.rating DESC, r.created_at DESC
+         LIMIT 9`
+      );
+
+      res.status(200).json({
+        success: true,
+        reviews: result.rows
+      });
+    } catch (error) {
+      console.error('Error fetching recent reviews:', error);
       res.status(500).json({ success: false, message: 'Server error' });
     }
   }

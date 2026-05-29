@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const UserController = require('../controllers/userController');
 const { verifyToken } = require('../middlewares/authMiddleware');
+const upload = require('../middlewares/uploadMiddleware');
 
 // Route to update a patient's medical profile
 router.put('/profile', verifyToken, UserController.updatePatientProfile);
@@ -23,5 +24,11 @@ router.get('/doctors', UserController.getAvailableDoctors);
 
 // Route to register/update Face ID
 router.put('/face-id', verifyToken, UserController.updateFaceId);
+
+// Route to update profile image
+router.put('/profile-image', verifyToken, upload.single('image'), UserController.updateProfileImage);
+
+// Route to get profile image (Public)
+router.get('/profile-image/:id', UserController.getProfileImage);
 
 module.exports = router;
