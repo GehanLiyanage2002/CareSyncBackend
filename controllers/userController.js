@@ -320,6 +320,12 @@ class UserController {
         [fileData, fileMimeType, userId]
       );
 
+      // Emit socket event for real-time profile image updates
+      const io = req.app?.get('io');
+      if (io) {
+        io.emit('profileImageUpdated', { user_id: userId });
+      }
+
       res.status(200).json({
         success: true,
         message: 'Profile image updated successfully',
