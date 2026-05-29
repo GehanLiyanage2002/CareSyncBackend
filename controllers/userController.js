@@ -228,7 +228,7 @@ class UserController {
           COALESCE(dp.location, 'Not specified') as location,
           COALESCE(dp.consultation_fee, 1500) as "consultationFee",
           '4.8' as rating,
-          'https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?auto=format&fit=crop&q=80&w=400' as image
+          '4.8' as rating
         FROM users u
         LEFT JOIN doctor_profiles dp ON u.id = dp.doctor_id
         WHERE u.role = 'Doctor' AND dp.is_approved = true
@@ -243,7 +243,8 @@ class UserController {
           specialization: doc.specialization ? decrypt(doc.specialization) : 'Not Specified',
           experience: doc.experience ? decrypt(doc.experience) : 'Not Specified',
           about: doc.about ? decrypt(doc.about) : 'No bio available',
-          qualifications: doc.qualifications ? decrypt(doc.qualifications) : 'Not Specified'
+          qualifications: doc.qualifications ? decrypt(doc.qualifications) : 'Not Specified',
+          image: `http://localhost:5000/api/users/profile-image/${doc.doctor_id}?t=${new Date().getTime()}`
         };
       });
 
@@ -291,12 +292,72 @@ class UserController {
         return next(new Error('User not found.'));
       }
 
+      res.status(200).json({ success: true, message: 'Face ID updated successfully.' });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * @route   PUT /api/users/profile-image
+   * @desc    Upload a new profile image
+   * @access  Private
+   */
+  static async updateProfileImage(req, res, next) {
+    try {
+      const userId = req.user.id;
+      const fileData = req.file ? req.file.buffer : null;
+      const fileMimeType = req.file ? req.file.mimetype : null;
+
+      if (!fileData || !fileMimeType) {
+        res.status(400);
+        return next(new Error('No image file provided.'));
+      }
+
+      const db = require('../config/db');
+      await db.query(
+        'UPDATE users SET profile_image = $1, profile_image_mimetype = $2 WHERE id = $3',
+        [fileData, fileMimeType, userId]
+      );
+
       res.status(200).json({
         success: true,
-        message: 'Face ID registered successfully'
+        message: 'Profile image updated successfully',
+        imageUrl: `http://localhost:5000/api/users/profile-image/${userId}?t=${Date.now()}`
       });
     } catch (error) {
       next(error);
+    }
+  }
+
+  /**
+   * @route   GET /api/users/profile-image/:id
+   * @desc    Get profile image by user ID
+   * @access  Public
+   */
+  static async getProfileImage(req, res) {
+    try {
+      const { id } = req.params;
+      const db = require('../config/db');
+
+      const result = await db.query(
+        'SELECT profile_image, profile_image_mimetype FROM users WHERE id = $1',
+        [id]
+      );
+
+      if (result.rows.length === 0 || !result.rows[0].profile_image) {
+        // Return a default placeholder image or 404
+        return res.redirect('https://ui-avatars.com/api/?name=User&background=random');
+      }
+
+      const { profile_image, profile_image_mimetype } = result.rows[0];
+
+      res.set('Content-Type', profile_image_mimetype);
+      res.set('Cache-Control', 'public, max-age=31536000');
+      res.send(profile_image);
+    } catch (error) {
+      console.error('Error fetching profile image:', error);
+      res.status(500).send('Server Error');
     }
   }
 }
