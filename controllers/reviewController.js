@@ -80,7 +80,7 @@ class ReviewController {
       const { doctorId } = req.params;
 
       const result = await db.query(
-        `SELECT r.id, r.rating, r.comment, r.patient_name, r.created_at,
+        `SELECT r.id, r.rating, r.comment, r.patient_name, r.patient_id, r.created_at,
                 a.appointment_date
          FROM reviews r
          LEFT JOIN appointments a ON r.appointment_id = a.id
@@ -116,7 +116,7 @@ class ReviewController {
   static async getRecentPublicReviews(req, res) {
     try {
       const result = await db.query(
-        `SELECT r.id, r.rating, r.comment, r.patient_name, r.created_at,
+        `SELECT r.id, r.rating, r.comment, r.patient_name, r.patient_id, r.created_at,
                 r.doctor_id, u.full_name AS doctor_name
          FROM reviews r
          JOIN users u ON r.doctor_id = u.id
