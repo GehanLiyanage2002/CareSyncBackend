@@ -1,5 +1,8 @@
-﻿-- CreateSchema
+-- CreateSchema
 CREATE SCHEMA IF NOT EXISTS "public";
+
+-- CreateExtension
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- CreateEnum
 CREATE TYPE "appointment_status" AS ENUM ('Pending', 'Confirmed', 'Completed', 'Cancelled');
@@ -205,4 +208,3 @@ ALTER TABLE "service_bookings" ADD CONSTRAINT "service_bookings_patient_id_fkey"
 
 -- AddForeignKey
 ALTER TABLE "service_bookings" ADD CONSTRAINT "service_bookings_service_id_fkey" FOREIGN KEY ("service_id") REFERENCES "medical_services"("id") ON DELETE NO ACTION ON UPDATE NO ACTION;
-
