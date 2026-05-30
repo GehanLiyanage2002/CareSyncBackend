@@ -1,5 +1,5 @@
 const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+const prisma = new PrismaClient({ accelerateUrl: process.env.DATABASE_URL });
 
 async function main() {
   // Add your seed data here. For example:
