@@ -1,0 +1,169 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model appointments {
+  id                                   String              @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  doctor_id                            String?             @db.Uuid
+  patient_id                           String?             @db.Uuid
+  patient_name                         String
+  age                                  String?
+  gender                               String?
+  mobile_number                        String?
+  appointment_date                     DateTime            @db.Date
+  start_time                           DateTime            @db.Time(6)
+  reason                               String?
+  status                               appointment_status? @default(Pending)
+  created_at                           DateTime?           @default(now()) @db.Timestamptz(6)
+  updated_at                           DateTime?           @default(now()) @db.Timestamptz(6)
+  token_number                         String?             @db.VarChar(50)
+  email                                String?             @db.VarChar(255)
+  payment_method                       String?             @db.VarChar(50)
+  is_telemedicine                      Boolean?            @default(false)
+  users_appointments_doctor_idTousers  users?              @relation("appointments_doctor_idTousers", fields: [doctor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users_appointments_patient_idTousers users?              @relation("appointments_patient_idTousers", fields: [patient_id], references: [id], onUpdate: NoAction)
+  reviews                              reviews?
+}
+
+model doctor_profiles {
+  id               String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  doctor_id        String?   @unique @db.Uuid
+  specialization   String?
+  experience       String?
+  bio              String?
+  created_at       DateTime? @default(now()) @db.Timestamptz(6)
+  updated_at       DateTime? @default(now()) @db.Timestamptz(6)
+  is_available     Boolean?  @default(true)
+  location         String?   @db.VarChar(255)
+  consultation_fee Decimal?  @db.Decimal
+  is_approved      Boolean?  @default(false)
+  qualifications   String?
+  users            users?    @relation(fields: [doctor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model doctor_schedules {
+  id                    String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  doctor_id             String?  @db.Uuid
+  schedule_date         DateTime @db.Date
+  start_time            DateTime @db.Time(6)
+  end_time              DateTime @db.Time(6)
+  slot_duration_minutes Int
+  users                 users?   @relation(fields: [doctor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([doctor_id, schedule_date])
+}
+
+model dummy_items {
+  id         Int       @id @default(autoincrement())
+  name       String    @db.VarChar(100)
+  created_at DateTime? @default(now()) @db.Timestamp(6)
+}
+
+model medical_reports {
+  id             String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  patient_id     String?   @db.Uuid
+  title          String    @db.VarChar(255)
+  description    String?
+  attachment_url String?   @db.VarChar(255)
+  created_at     DateTime? @default(now()) @db.Timestamptz(6)
+  users          users?    @relation(fields: [patient_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model medical_services {
+  id               Int                @id @default(autoincrement())
+  name             String             @db.VarChar(255)
+  price            Decimal            @db.Decimal(10, 2)
+  is_available     Boolean?           @default(true)
+  created_at       DateTime?          @default(now()) @db.Timestamp(6)
+  service_bookings service_bookings[]
+}
+
+model pgmigrations {
+  id     Int      @id @default(autoincrement())
+  name   String   @db.VarChar(255)
+  run_on DateTime @db.Timestamp(6)
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model reviews {
+  id                              String        @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  appointment_id                  String?       @unique @db.Uuid
+  patient_id                      String?       @db.Uuid
+  doctor_id                       String?       @db.Uuid
+  rating                          Int
+  comment                         String?
+  patient_name                    String?       @db.VarChar(255)
+  created_at                      DateTime?     @default(now()) @db.Timestamptz(6)
+  appointments                    appointments? @relation(fields: [appointment_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users_reviews_doctor_idTousers  users?        @relation("reviews_doctor_idTousers", fields: [doctor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users_reviews_patient_idTousers users?        @relation("reviews_patient_idTousers", fields: [patient_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model service_bookings {
+  id               Int               @id @default(autoincrement())
+  patient_id       String?           @db.Uuid
+  service_id       Int?
+  appointment_date DateTime          @db.Date
+  appointment_time DateTime          @db.Time(6)
+  status           String?           @default("Confirmed") @db.VarChar(50)
+  amount_paid      Decimal           @db.Decimal(10, 2)
+  created_at       DateTime?         @default(now()) @db.Timestamp(6)
+  users            users?            @relation(fields: [patient_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  medical_services medical_services? @relation(fields: [service_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model services {
+  id           Int       @id @default(autoincrement())
+  name         String    @db.VarChar(255)
+  price        Decimal   @db.Decimal
+  is_available Boolean?  @default(true)
+  created_at   DateTime? @default(now()) @db.Timestamptz(6)
+  is_default   Boolean?  @default(false)
+}
+
+model users {
+  id                                          String             @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  full_name                                   String             @db.VarChar(255)
+  email                                       String             @unique @db.VarChar(255)
+  password_hash                               String             @db.VarChar(255)
+  role                                        user_role
+  mobile_number                               String?
+  blood_group                                 String?
+  allergies                                   String?
+  face_descriptor                             String?
+  is_verified                                 Boolean?           @default(false)
+  otp_code                                    String?            @db.VarChar(10)
+  created_at                                  DateTime?          @default(now()) @db.Timestamptz(6)
+  chronic_conditions                          String?
+  emergency_contact_name                      String?
+  emergency_contact_number                    String?
+  profile_image                               Bytes?
+  profile_image_mimetype                      String?            @db.VarChar(255)
+  appointments_appointments_doctor_idTousers  appointments[]     @relation("appointments_doctor_idTousers")
+  appointments_appointments_patient_idTousers appointments[]     @relation("appointments_patient_idTousers")
+  doctor_profiles                             doctor_profiles?
+  doctor_schedules                            doctor_schedules[]
+  medical_reports                             medical_reports[]
+  reviews_reviews_doctor_idTousers            reviews[]          @relation("reviews_doctor_idTousers")
+  reviews_reviews_patient_idTousers           reviews[]          @relation("reviews_patient_idTousers")
+  service_bookings                            service_bookings[]
+}
+
+enum appointment_status {
+  Pending
+  Confirmed
+  Completed
+  Cancelled
+}
+
+enum user_role {
+  Patient
+  Doctor
+  Receptionist
+  Admin
+}
