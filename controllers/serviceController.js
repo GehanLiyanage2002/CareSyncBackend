@@ -391,6 +391,12 @@ class ServiceController {
 
       await db.query('DELETE FROM services WHERE id = $1', [id]);
 
+      // Emit socket event for real-time updates
+      const io = req.app?.get('io');
+      if (io) {
+        io.emit('serviceDeleted', { serviceId: id });
+      }
+
       res.status(200).json({
         success: true,
         message: 'Service removed completely.'
