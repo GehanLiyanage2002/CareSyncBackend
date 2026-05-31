@@ -125,6 +125,8 @@ model services {
   is_available     Boolean?            @default(true)
   created_at       DateTime?           @default(now()) @db.Timestamptz(6)
   is_default       Boolean?            @default(false)
+  image            Bytes?
+  image_mimetype   String?             @db.VarChar(255)
   service_schedules service_schedules[]
 }
 
