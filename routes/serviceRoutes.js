@@ -20,6 +20,7 @@ router.post('/', requireRole(['Admin']), ServiceController.createService);
 router.put('/:id', requireRole(['Admin']), ServiceController.updateService);
 router.put('/:id/image', requireRole(['Admin']), upload.single('image'), ServiceController.uploadServiceImage);
 router.post('/:id/schedules', requireRole(['Admin']), ServiceController.addServiceSchedule);
+router.delete('/:id', requireRole(['Admin']), ServiceController.deleteService);
 router.delete('/schedules/:scheduleId', requireRole(['Admin']), ServiceController.deleteServiceSchedule);
 
 // General authenticated routes (available to both Patients and Admins)

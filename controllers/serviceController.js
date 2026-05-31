@@ -374,6 +374,32 @@ class ServiceController {
       next(error);
     }
   }
+  /**
+   * @route   DELETE /api/services/:id
+   * @desc    Delete a medical service
+   * @access  Private (Admin Only)
+   */
+  static async deleteService(req, res, next) {
+    try {
+      const { id } = req.params;
+      
+      const checkResult = await db.query('SELECT id FROM services WHERE id = $1', [id]);
+      if (checkResult.rows.length === 0) {
+        res.status(404);
+        return next(new Error('Service not found'));
+      }
+
+      await db.query('DELETE FROM services WHERE id = $1', [id]);
+
+      res.status(200).json({
+        success: true,
+        message: 'Service removed completely.'
+      });
+    } catch (error) {
+      console.error('Error deleting service:', error);
+      next(error);
+    }
+  }
 }
 
 module.exports = ServiceController;
