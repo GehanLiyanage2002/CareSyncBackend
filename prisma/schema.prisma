@@ -117,12 +117,27 @@ model service_bookings {
 }
 
 model services {
-  id           Int       @id @default(autoincrement())
-  name         String    @db.VarChar(255)
-  price        Decimal   @db.Decimal
-  is_available Boolean?  @default(true)
-  created_at   DateTime? @default(now()) @db.Timestamptz(6)
-  is_default   Boolean?  @default(false)
+  id               Int                 @id @default(autoincrement())
+  name             String              @db.VarChar(255)
+  description      String?             @db.Text
+  location         String?             @db.VarChar(255)
+  price            Decimal             @db.Decimal
+  is_available     Boolean?            @default(true)
+  created_at       DateTime?           @default(now()) @db.Timestamptz(6)
+  is_default       Boolean?            @default(false)
+  service_schedules service_schedules[]
+}
+
+model service_schedules {
+  id                    String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  service_id            Int?
+  schedule_date         DateTime @db.Date
+  start_time            DateTime @db.Time(6)
+  end_time              DateTime @db.Time(6)
+  slot_duration_minutes Int
+  services              services? @relation(fields: [service_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([service_id, schedule_date])
 }
 
 model users {
