@@ -80,3 +80,4 @@ cypress/videos/
 # =========================
 .tmp/
 .temp/
+/generated/prisma
