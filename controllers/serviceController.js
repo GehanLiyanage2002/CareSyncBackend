@@ -92,6 +92,12 @@ class ServiceController {
         return next(new Error('Service not found'));
       }
 
+      // Emit socket event for real-time updates
+      const io = req.app?.get('io');
+      if (io) {
+        io.emit('serviceUpdated', { service: result.rows[0] });
+      }
+
       res.status(200).json({
         success: true,
         message: 'Service updated successfully',
@@ -129,6 +135,12 @@ class ServiceController {
       if (result.rows.length === 0) {
         res.status(404);
         return next(new Error('Service not found'));
+      }
+      
+      // Emit socket event for real-time updates
+      const io = req.app?.get('io');
+      if (io) {
+        io.emit('serviceImageUpdated', { serviceId: id });
       }
       
       res.status(200).json({
