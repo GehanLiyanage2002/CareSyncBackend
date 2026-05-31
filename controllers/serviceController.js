@@ -208,7 +208,7 @@ class ServiceController {
       }
 
       const query = `
-        INSERT INTO service_bookings (patient_id, service_id, booking_date, booking_time, amount_paid, status)
+        INSERT INTO service_bookings (patient_id, service_id, appointment_date, appointment_time, amount_paid, status)
         VALUES ($1, $2, $3, $4, $5, 'Confirmed')
         RETURNING id
       `;
@@ -246,25 +246,25 @@ class ServiceController {
       if (req.user.role === 'Admin') {
         query = `
           SELECT sb.id, s.name AS "serviceName", 
-                 TO_CHAR(sb.booking_date, 'YYYY-MM-DD') AS date, 
-                 TO_CHAR(sb.booking_time, 'HH24:MI') AS time, 
+                 TO_CHAR(sb.appointment_date, 'YYYY-MM-DD') AS date, 
+                 TO_CHAR(sb.appointment_time, 'HH24:MI') AS time, 
                  sb.amount_paid AS price,
                  u.full_name AS "patientName"
           FROM service_bookings sb
           JOIN services s ON sb.service_id = s.id
           JOIN users u ON sb.patient_id = u.id
-          ORDER BY sb.booking_date DESC, sb.booking_time DESC
+          ORDER BY sb.appointment_date DESC, sb.appointment_time DESC
         `;
       } else {
         query = `
           SELECT sb.id, s.name AS "serviceName", 
-                 TO_CHAR(sb.booking_date, 'YYYY-MM-DD') AS date, 
-                 TO_CHAR(sb.booking_time, 'HH24:MI') AS time, 
+                 TO_CHAR(sb.appointment_date, 'YYYY-MM-DD') AS date, 
+                 TO_CHAR(sb.appointment_time, 'HH24:MI') AS time, 
                  sb.amount_paid AS price
           FROM service_bookings sb
           JOIN services s ON sb.service_id = s.id
           WHERE sb.patient_id = $1
-          ORDER BY sb.booking_date DESC, sb.booking_time DESC
+          ORDER BY sb.appointment_date DESC, sb.appointment_time DESC
         `;
         params = [req.user.id];
       }
