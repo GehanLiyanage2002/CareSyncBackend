@@ -104,6 +104,67 @@ class ServiceController {
   }
 
   /**
+   * @route   PUT /api/services/:id/image
+   * @desc    Upload service image
+   * @access  Private (Admin Only)
+   */
+  static async uploadServiceImage(req, res, next) {
+    try {
+      const { id } = req.params;
+      
+      if (!req.file) {
+        res.status(400);
+        return next(new Error('Please upload an image file'));
+      }
+
+      const query = `
+        UPDATE services
+        SET image = $1, image_mimetype = $2
+        WHERE id = $3
+        RETURNING id
+      `;
+      
+      const result = await db.query(query, [req.file.buffer, req.file.mimetype, id]);
+      
+      if (result.rows.length === 0) {
+        res.status(404);
+        return next(new Error('Service not found'));
+      }
+      
+      res.status(200).json({
+        success: true,
+        message: 'Service image uploaded successfully'
+      });
+    } catch (error) {
+      console.error('Error in uploadServiceImage:', error);
+      next(error);
+    }
+  }
+
+  /**
+   * @route   GET /api/services/:id/image
+   * @desc    Get service image
+   * @access  Public
+   */
+  static async getServiceImage(req, res, next) {
+    try {
+      const { id } = req.params;
+      const query = `SELECT image, image_mimetype FROM services WHERE id = $1`;
+      const result = await db.query(query, [id]);
+      
+      if (result.rows.length === 0 || !result.rows[0].image) {
+        return res.status(404).send('Image not found');
+      }
+      
+      res.set('Content-Type', result.rows[0].image_mimetype);
+      res.send(result.rows[0].image);
+    } catch (error) {
+      console.error('Error in getServiceImage:', error);
+      res.status(500).send('Server Error');
+    }
+  }
+
+  /**
    * @route   POST /api/services/book
    * @desc    Book a medical service
    * @access  Private (Patient Only)
