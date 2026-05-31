@@ -10,7 +10,7 @@ class ServiceController {
   static async getAllServices(req, res, next) {
     try {
       const query = `
-        SELECT id, name, price, is_available
+        SELECT id, name, description, location, price, is_available
         FROM services
         ORDER BY name ASC
       `;
@@ -33,19 +33,19 @@ class ServiceController {
    */
   static async createService(req, res, next) {
     try {
-      const { name, price } = req.body;
+      const { name, price, description, location } = req.body;
       
-      if (!name || price === undefined) {
+      if (!name) {
         res.status(400);
-        return next(new Error('Please provide name and price for the service'));
+        return next(new Error('Please provide name for the service'));
       }
 
       const query = `
-        INSERT INTO services (name, price, is_available)
-        VALUES ($1, $2, TRUE)
-        RETURNING id, name, price, is_available
+        INSERT INTO services (name, description, location, price, is_available)
+        VALUES ($1, $2, $3, $4, TRUE)
+        RETURNING id, name, description, location, price, is_available
       `;
-      const result = await db.query(query, [name, Number(price)]);
+      const result = await db.query(query, [name, description || null, location || null, Number(price || 0)]);
 
       // Emit socket event for real-time updates
       const io = req.app?.get('io');
@@ -72,20 +72,20 @@ class ServiceController {
   static async updateService(req, res, next) {
     try {
       const { id } = req.params;
-      const { name, price, is_available } = req.body;
+      const { name, price, is_available, description, location } = req.body;
 
-      if (!name || price === undefined || is_available === undefined) {
+      if (!name || is_available === undefined) {
         res.status(400);
-        return next(new Error('Please provide name, price, and availability status'));
+        return next(new Error('Please provide name and availability status'));
       }
 
       const query = `
         UPDATE services
-        SET name = $1, price = $2, is_available = $3
-        WHERE id = $4
-        RETURNING id, name, price, is_available
+        SET name = $1, description = $2, location = $3, price = $4, is_available = $5
+        WHERE id = $6
+        RETURNING id, name, description, location, price, is_available
       `;
-      const result = await db.query(query, [name, Number(price), is_available, id]);
+      const result = await db.query(query, [name, description || null, location || null, Number(price || 0), is_available, id]);
 
       if (result.rows.length === 0) {
         res.status(404);
@@ -204,6 +204,100 @@ class ServiceController {
       });
     } catch (error) {
       console.error('Error in getMyBookings:', error);
+      next(error);
+    }
+  }
+
+  /**
+   * @route   GET /api/services/:id/schedules
+   * @desc    Get schedules for a specific service
+   * @access  Private
+   */
+  static async getServiceSchedules(req, res, next) {
+    try {
+      const { id } = req.params;
+      const query = `
+        SELECT id, service_id, TO_CHAR(schedule_date, 'YYYY-MM-DD') AS schedule_date,
+               TO_CHAR(start_time, 'HH24:MI') AS start_time,
+               TO_CHAR(end_time, 'HH24:MI') AS end_time,
+               slot_duration_minutes
+        FROM service_schedules
+        WHERE service_id = $1
+        ORDER BY schedule_date ASC, start_time ASC
+      `;
+      const result = await db.query(query, [id]);
+      
+      res.status(200).json({
+        success: true,
+        schedules: result.rows
+      });
+    } catch (error) {
+      console.error('Error fetching service schedules:', error);
+      next(error);
+    }
+  }
+
+  /**
+   * @route   POST /api/services/:id/schedules
+   * @desc    Add a schedule to a service
+   * @access  Private (Admin Only)
+   */
+  static async addServiceSchedule(req, res, next) {
+    try {
+      const { id } = req.params;
+      const { schedule_date, start_time, end_time, slot_duration_minutes } = req.body;
+
+      if (!schedule_date || !start_time || !end_time || !slot_duration_minutes) {
+        res.status(400);
+        return next(new Error('Please provide date, start time, end time, and slot duration.'));
+      }
+
+      const query = `
+        INSERT INTO service_schedules (service_id, schedule_date, start_time, end_time, slot_duration_minutes)
+        VALUES ($1, $2, $3, $4, $5)
+        RETURNING id, service_id, TO_CHAR(schedule_date, 'YYYY-MM-DD') AS schedule_date,
+                  TO_CHAR(start_time, 'HH24:MI') AS start_time,
+                  TO_CHAR(end_time, 'HH24:MI') AS end_time,
+                  slot_duration_minutes
+      `;
+      const result = await db.query(query, [id, schedule_date, start_time, end_time, slot_duration_minutes]);
+
+      res.status(201).json({
+        success: true,
+        message: 'Schedule added successfully',
+        schedule: result.rows[0]
+      });
+    } catch (error) {
+      if (error.code === '23505') { // Unique violation
+        res.status(400);
+        return next(new Error('A schedule for this date already exists.'));
+      }
+      console.error('Error adding service schedule:', error);
+      next(error);
+    }
+  }
+
+  /**
+   * @route   DELETE /api/services/schedules/:scheduleId
+   * @desc    Delete a service schedule
+   * @access  Private (Admin Only)
+   */
+  static async deleteServiceSchedule(req, res, next) {
+    try {
+      const { scheduleId } = req.params;
+      const result = await db.query('DELETE FROM service_schedules WHERE id = $1 RETURNING id', [scheduleId]);
+
+      if (result.rows.length === 0) {
+        res.status(404);
+        return next(new Error('Schedule not found.'));
+      }
+
+      res.status(200).json({
+        success: true,
+        message: 'Schedule deleted successfully'
+      });
+    } catch (error) {
+      console.error('Error deleting service schedule:', error);
       next(error);
     }
   }
