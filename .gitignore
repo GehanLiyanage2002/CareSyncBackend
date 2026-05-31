@@ -3,7 +3,6 @@
 # =========================
 node_modules/
 */node_modules/
-generated/
 .antigravitycli/
 # =========================
 # Build outputs

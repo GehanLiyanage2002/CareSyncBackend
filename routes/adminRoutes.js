@@ -29,5 +29,6 @@ router.get('/patients', AdminController.getPatients);
 router.get('/appointments', AdminController.getAppointments);
 router.get('/earnings', AdminController.getEarnings);
 
-module.exports = router;
+router.delete('/doctors/:id', AdminController.deleteDoctor);
 
+module.exports = router;
