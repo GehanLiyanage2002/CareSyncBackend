@@ -69,7 +69,9 @@ class AdminController {
     try {
       const query = `
         SELECT u.id, u.full_name, u.email, u.mobile_number, u.created_at, 
-               dp.specialization, dp.experience, dp.is_approved, dp.consultation_fee, dp.is_available
+               dp.specialization, dp.experience, dp.is_approved, dp.consultation_fee, dp.is_available,
+               (SELECT COUNT(DISTINCT patient_id) FROM appointments WHERE doctor_id = u.id) as total_patients,
+               (SELECT COALESCE(ROUND(AVG(rating), 1), 0) FROM reviews WHERE doctor_id = u.id) as average_rating
         FROM users u
         LEFT JOIN doctor_profiles dp ON u.id = dp.doctor_id
         WHERE u.role = 'Doctor'
@@ -82,6 +84,8 @@ class AdminController {
         mobile_number: row.mobile_number ? decrypt(row.mobile_number) : null,
         specialization: row.specialization ? decrypt(row.specialization) : 'Not Specified',
         experience: row.experience ? decrypt(row.experience) : 'Not Specified',
+        total_patients: parseInt(row.total_patients) || 0,
+        average_rating: parseFloat(row.average_rating) || 0
       }));
 
       res.status(200).json({ success: true, doctors });
@@ -354,6 +358,37 @@ class AdminController {
         success: true,
         message: 'Doctor profile image updated.',
         imageUrl: `http://localhost:5000/api/users/profile-image/${id}?t=${Date.now()}`
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * @route   DELETE /api/admin/doctors/:id
+   * @desc    Admin completely removes a doctor
+   * @access  Private (Admin)
+   */
+  static async deleteDoctor(req, res, next) {
+    try {
+      const { id } = req.params;
+      
+      // Check if user exists and is a doctor
+      const checkQuery = `SELECT role FROM users WHERE id = $1`;
+      const checkResult = await db.query(checkQuery, [id]);
+      
+      if (checkResult.rows.length === 0 || checkResult.rows[0].role !== 'Doctor') {
+        res.status(404);
+        return next(new Error('Doctor not found'));
+      }
+
+      // Delete the doctor (since we have ON DELETE CASCADE, it should remove doctor_profiles, schedules, etc)
+      const deleteQuery = `DELETE FROM users WHERE id = $1 RETURNING id`;
+      await db.query(deleteQuery, [id]);
+
+      res.status(200).json({ 
+        success: true, 
+        message: 'Doctor removed completely.'
       });
     } catch (error) {
       next(error);
