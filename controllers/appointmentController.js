@@ -378,7 +378,7 @@ class AppointmentController {
       const updatedTime = new Date(`1970-01-01T${new_time}`);
 
       const updatedResult = await db.query(
-        'UPDATE appointments SET appointment_date = $1, start_time = $2 WHERE id = $3 RETURNING *',
+        "UPDATE appointments SET appointment_date = $1, start_time = $2, is_rescheduled = true, status = 'Pending' WHERE id = $3 RETURNING *",
         [new_date, new_time, id]
       );
       const updated = updatedResult.rows[0];
