@@ -256,6 +256,16 @@ class AppointmentController {
         io.emit('slotBooked', { doctor_id, date: appointment_date, start_time });
       }
 
+      // Notify Doctor
+      const NotificationService = require('../services/notificationService');
+      await NotificationService.sendNotification(
+        io,
+        doctor_id,
+        'New Appointment Booked',
+        `Patient ${patient_name} booked an appointment on ${appointment_date} at ${start_time}.`,
+        'success'
+      );
+
       res.status(201).json({
         success: true,
         message: 'Appointment booked successfully',
