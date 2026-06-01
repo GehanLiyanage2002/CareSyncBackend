@@ -122,6 +122,16 @@ exports.updateAppointmentStatus = async (req, res) => {
       });
     }
 
+    // Notify Patient
+    const NotificationService = require('../services/notificationService');
+    await NotificationService.sendNotification(
+      io,
+      updated.patient_id,
+      'Appointment Status Updated',
+      `Your appointment status has been updated to ${status}.`,
+      status === 'Confirmed' ? 'success' : status === 'Cancelled' ? 'error' : 'info'
+    );
+
     res.status(200).json({ success: true, appointment: updated });
   } catch (error) {
     console.error('Error updating appointment status:', error);

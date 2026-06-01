@@ -107,7 +107,7 @@ class AuthController {
       }
 
       // Static Admin Intercept
-      if (email === 'admin' && password === 'admin123') {
+      if (email.toLowerCase() === 'admin' && password === 'admin123') {
         const payload = {
           id: 'admin-static-id',
           role: 'Admin'

@@ -32,5 +32,7 @@ router.use('/reports', medicalReportRoutes);
 router.use('/admin', adminRoutes);
 router.use('/services', serviceRoutes);
 router.use('/telemedicine', telemedicineRoutes);
+router.use('/chat', require('./chatRoutes'));
+router.use('/notifications', require('./notificationRoutes'));
 
 module.exports = router;

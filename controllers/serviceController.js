@@ -10,7 +10,8 @@ class ServiceController {
   static async getAllServices(req, res, next) {
     try {
       const query = `
-        SELECT id, name, description, location, price, is_available
+        SELECT id, name, description, location, price, is_available, 
+        CASE WHEN image IS NOT NULL THEN true ELSE false END as has_image
         FROM services
         ORDER BY name ASC
       `;
@@ -293,12 +294,12 @@ class ServiceController {
       const { id } = req.params;
       const query = `
         SELECT id, service_id, TO_CHAR(schedule_date, 'YYYY-MM-DD') AS schedule_date,
+               day_of_week,
                TO_CHAR(start_time, 'HH24:MI') AS start_time,
-               TO_CHAR(end_time, 'HH24:MI') AS end_time,
-               slot_duration_minutes
+               TO_CHAR(end_time, 'HH24:MI') AS end_time
         FROM service_schedules
         WHERE service_id = $1
-        ORDER BY schedule_date ASC, start_time ASC
+        ORDER BY schedule_date ASC, day_of_week ASC, start_time ASC
       `;
       const result = await db.query(query, [id]);
       
@@ -320,22 +321,32 @@ class ServiceController {
   static async addServiceSchedule(req, res, next) {
     try {
       const { id } = req.params;
-      const { schedule_date, start_time, end_time, slot_duration_minutes } = req.body;
+      const { schedule_date, day_of_week, start_time, end_time } = req.body;
 
-      if (!schedule_date || !start_time || !end_time || !slot_duration_minutes) {
+      if (!id || id === 'undefined' || isNaN(parseInt(id))) {
         res.status(400);
-        return next(new Error('Please provide date, start time, end time, and slot duration.'));
+        return next(new Error('Invalid service ID'));
+      }
+
+      if (!start_time || !end_time) {
+        res.status(400);
+        return next(new Error('Please provide start time and end time.'));
+      }
+      
+      if (!schedule_date && !day_of_week) {
+        res.status(400);
+        return next(new Error('Please provide either a specific date or a day of the week.'));
       }
 
       const query = `
-        INSERT INTO service_schedules (service_id, schedule_date, start_time, end_time, slot_duration_minutes)
+        INSERT INTO service_schedules (service_id, schedule_date, day_of_week, start_time, end_time)
         VALUES ($1, $2, $3, $4, $5)
         RETURNING id, service_id, TO_CHAR(schedule_date, 'YYYY-MM-DD') AS schedule_date,
+                  day_of_week,
                   TO_CHAR(start_time, 'HH24:MI') AS start_time,
-                  TO_CHAR(end_time, 'HH24:MI') AS end_time,
-                  slot_duration_minutes
+                  TO_CHAR(end_time, 'HH24:MI') AS end_time
       `;
-      const result = await db.query(query, [id, schedule_date, start_time, end_time, slot_duration_minutes]);
+      const result = await db.query(query, [id, schedule_date || null, day_of_week || null, start_time, end_time]);
 
       res.status(201).json({
         success: true,
