@@ -85,8 +85,30 @@ class AppointmentController {
   static async getDoctorAppointments(req, res, next) {
     try {
       const doctorId = req.user.id;
+      const { filter } = req.query;
       
-      const appointments = await DoctorModel.getAppointmentsByDoctorId(doctorId);
+      let appointments = await DoctorModel.getAppointmentsByDoctorId(doctorId);
+
+      if (filter === 'today') {
+        const today = new Date();
+        const yyyy = today.getFullYear();
+        const mm = String(today.getMonth() + 1).padStart(2, '0');
+        const dd = String(today.getDate()).padStart(2, '0');
+        const todayLocalStr = `${yyyy}-${mm}-${dd}`;
+
+        console.log(`[FILTER] todayLocalStr: ${todayLocalStr}`);
+
+        appointments = appointments.filter(apt => {
+          const aptDate = new Date(apt.appointment_date);
+          const aptYyyy = aptDate.getFullYear();
+          const aptMm = String(aptDate.getMonth() + 1).padStart(2, '0');
+          const aptDd = String(aptDate.getDate()).padStart(2, '0');
+          const aptLocalStr = `${aptYyyy}-${aptMm}-${aptDd}`;
+          
+          console.log(`[FILTER] apt.id: ${apt.id}, aptDate in DB: ${apt.appointment_date}, aptLocalStr: ${aptLocalStr}, match: ${aptLocalStr === todayLocalStr}`);
+          return aptLocalStr === todayLocalStr;
+        });
+      }
 
       res.status(200).json({
         success: true,
