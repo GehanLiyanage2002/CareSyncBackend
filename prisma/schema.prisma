@@ -24,6 +24,7 @@ model appointments {
   email                                String?             @db.VarChar(255)
   payment_method                       String?             @db.VarChar(50)
   is_telemedicine                      Boolean?            @default(false)
+  is_rescheduled                       Boolean?            @default(false)
   users_appointments_doctor_idTousers  users?              @relation("appointments_doctor_idTousers", fields: [doctor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   users_appointments_patient_idTousers users?              @relation("appointments_patient_idTousers", fields: [patient_id], references: [id], onUpdate: NoAction)
   reviews                              reviews?
