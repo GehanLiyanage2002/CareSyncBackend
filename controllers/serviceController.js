@@ -249,6 +249,7 @@ class ServiceController {
                  TO_CHAR(sb.appointment_date, 'YYYY-MM-DD') AS date, 
                  TO_CHAR(sb.appointment_time, 'HH24:MI') AS time, 
                  sb.amount_paid AS price,
+                 sb.status,
                  u.full_name AS "patientName"
           FROM service_bookings sb
           JOIN services s ON sb.service_id = s.id

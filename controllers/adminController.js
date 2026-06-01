@@ -164,21 +164,66 @@ class AdminController {
       const query = `
         SELECT 
           a.id, a.appointment_date as date, a.start_time as time, a.status, a.reason,
+          a.age, a.gender, a.mobile_number,
           p.full_name as patient_name,
-          d.full_name as doctor_name
+          d.full_name as doctor_name,
+          dp.specialization as doctor_specialization,
+          dp.consultation_fee as fees
         FROM appointments a
         JOIN users p ON a.patient_id = p.id
         JOIN users d ON a.doctor_id = d.id
+        LEFT JOIN doctor_profiles dp ON d.id = dp.doctor_id
         ORDER BY a.appointment_date DESC, a.start_time DESC
       `;
       const result = await db.query(query);
       
+      const { decrypt } = require('../utils/cryptoUtils');
       const appointments = result.rows.map(row => ({
         ...row,
-        reason: row.reason ? decrypt(row.reason) : null
+        reason: row.reason ? decrypt(row.reason) : null,
+        doctor_specialization: row.doctor_specialization ? decrypt(row.doctor_specialization) : 'Not Specified',
       }));
 
       res.status(200).json({ success: true, appointments });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * @route   PUT /api/admin/appointments/:id/cancel
+   * @desc    Admin cancels an appointment
+   * @access  Private (Admin)
+   */
+  static async cancelAppointment(req, res, next) {
+    try {
+      const { id } = req.params;
+      
+      const checkQuery = 'SELECT id, status FROM appointments WHERE id = $1';
+      const checkResult = await db.query(checkQuery, [id]);
+      
+      if (checkResult.rows.length === 0) {
+        res.status(404);
+        return next(new Error('Appointment not found.'));
+      }
+      
+      if (checkResult.rows[0].status === 'Cancelled') {
+        res.status(400);
+        return next(new Error('Appointment is already cancelled.'));
+      }
+
+      const updateQuery = `
+        UPDATE appointments 
+        SET status = 'Cancelled', updated_at = CURRENT_TIMESTAMP
+        WHERE id = $1 RETURNING *
+      `;
+      const updateResult = await db.query(updateQuery, [id]);
+
+      res.status(200).json({ 
+        success: true, 
+        message: 'Appointment cancelled successfully.',
+        appointment: updateResult.rows[0]
+      });
     } catch (error) {
       next(error);
     }
