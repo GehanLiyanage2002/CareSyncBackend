@@ -27,6 +27,7 @@ router.put('/doctors/:id/fee', AdminController.updateDoctorFee);
 router.put('/doctors/:id/profile-image', upload.single('image'), AdminController.updateDoctorProfileImage);
 router.get('/patients', AdminController.getPatients);
 router.get('/appointments', AdminController.getAppointments);
+router.put('/appointments/:id/cancel', AdminController.cancelAppointment);
 router.get('/earnings', AdminController.getEarnings);
 
 router.delete('/doctors/:id', AdminController.deleteDoctor);
