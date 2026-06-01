@@ -261,7 +261,8 @@ class ServiceController {
           SELECT sb.id, s.name AS "serviceName", 
                  TO_CHAR(sb.appointment_date, 'YYYY-MM-DD') AS date, 
                  TO_CHAR(sb.appointment_time, 'HH24:MI') AS time, 
-                 sb.amount_paid AS price
+                 sb.amount_paid AS price,
+                 sb.status
           FROM service_bookings sb
           JOIN services s ON sb.service_id = s.id
           WHERE sb.patient_id = $1
