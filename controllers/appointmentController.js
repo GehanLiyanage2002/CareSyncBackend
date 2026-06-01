@@ -331,6 +331,13 @@ class AppointmentController {
         return res.status(400).json({ success: false, message: 'Only Pending appointments can be rescheduled.' });
       }
 
+      // 1-hour reschedule window: only allow rescheduling within 60 minutes of booking
+      const createdAt = new Date(appointment.created_at);
+      const minutesSinceBooking = (Date.now() - createdAt.getTime()) / (1000 * 60);
+      if (minutesSinceBooking > 60) {
+        return res.status(403).json({ success: false, message: 'Rescheduling is only allowed within 1 hour of booking.' });
+      }
+
       const dateStr = appointment.appointment_date instanceof Date 
         ? `${appointment.appointment_date.getFullYear()}-${String(appointment.appointment_date.getMonth() + 1).padStart(2, '0')}-${String(appointment.appointment_date.getDate()).padStart(2, '0')}`
         : appointment.appointment_date.split('T')[0];
