@@ -79,7 +79,6 @@ model medical_services {
   price            Decimal            @db.Decimal(10, 2)
   is_available     Boolean?           @default(true)
   created_at       DateTime?          @default(now()) @db.Timestamp(6)
-  service_bookings service_bookings[]
 }
 
 model pgmigrations {
@@ -113,16 +112,34 @@ model service_bookings {
   amount_paid      Decimal           @db.Decimal(10, 2)
   created_at       DateTime?         @default(now()) @db.Timestamp(6)
   users            users?            @relation(fields: [patient_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  medical_services medical_services? @relation(fields: [service_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  services         services?         @relation(fields: [service_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
 }
 
 model services {
-  id           Int       @id @default(autoincrement())
-  name         String    @db.VarChar(255)
-  price        Decimal   @db.Decimal
-  is_available Boolean?  @default(true)
-  created_at   DateTime? @default(now()) @db.Timestamptz(6)
-  is_default   Boolean?  @default(false)
+  id               Int                 @id @default(autoincrement())
+  name             String              @db.VarChar(255)
+  description      String?             @db.Text
+  location         String?             @db.VarChar(255)
+  price            Decimal             @db.Decimal
+  is_available     Boolean?            @default(true)
+  created_at       DateTime?           @default(now()) @db.Timestamptz(6)
+  is_default       Boolean?            @default(false)
+  image            Bytes?
+  image_mimetype   String?             @db.VarChar(255)
+  service_schedules service_schedules[]
+  service_bookings  service_bookings[]
+}
+
+model service_schedules {
+  id                    String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  service_id            Int?
+  schedule_date         DateTime @db.Date
+  start_time            DateTime @db.Time(6)
+  end_time              DateTime @db.Time(6)
+  slot_duration_minutes Int
+  services              services? @relation(fields: [service_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([service_id, schedule_date])
 }
 
 model users {

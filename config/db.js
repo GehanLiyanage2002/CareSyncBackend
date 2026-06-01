@@ -7,7 +7,10 @@ dotenv.config();
 const isProduction = process.env.NODE_ENV === 'production';
 
 // Configuration parameters
-const poolConfig = {
+const poolConfig = process.env.DATABASE_URL ? {
+  connectionString: process.env.DATABASE_URL,
+  ssl: { rejectUnauthorized: false }
+} : {
   user: process.env.DB_USER,
   host: process.env.DB_HOST,
   database: process.env.DB_NAME,
@@ -16,7 +19,7 @@ const poolConfig = {
 };
 
 // If in production, secure connection might be required
-if (isProduction) {
+if (isProduction && !process.env.DATABASE_URL) {
   poolConfig.ssl = {
     rejectUnauthorized: false,
   };

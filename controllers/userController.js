@@ -344,6 +344,13 @@ class UserController {
   static async getProfileImage(req, res) {
     try {
       const { id } = req.params;
+      
+      // Check if id is a valid UUID before querying DB to prevent PostgreSQL error
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+      if (!id || !uuidRegex.test(id)) {
+        return res.redirect('https://ui-avatars.com/api/?name=User&background=random');
+      }
+
       const db = require('../config/db');
 
       const result = await db.query(

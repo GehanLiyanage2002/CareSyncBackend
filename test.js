@@ -1,22 +1,7 @@
-const fetch = require('node-fetch');
-
-async function test() {
-  try {
-    const res = await fetch('http://localhost:5000/api/auth/register', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        full_name: 'Test User',
-        email: 'test@test.com',
-        password: 'password123',
-        role: 'Patient',
-        mobile_number: '1234567890'
-      })
-    });
-    const json = await res.json();
-    console.log('Response:', json);
-  } catch (err) {
-    console.error('Fetch error:', err);
-  }
-}
-test();
+const { Client } = require('pg');
+const client = new Client({ connectionString: 'postgres://postgres:postgres@localhost:5432/caresync' });
+client.connect().then(async () => {
+  const res = await client.query("SELECT TO_CHAR(start_time, 'HH24:MI') as start_time, TO_CHAR(end_time, 'HH24:MI') as end_time, slot_duration_minutes FROM service_schedules");
+  console.log(res.rows);
+  client.end();
+});
