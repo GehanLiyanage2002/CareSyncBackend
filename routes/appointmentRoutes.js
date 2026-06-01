@@ -47,4 +47,20 @@ router.post(
   AppointmentController.createAppointment
 );
 
+// Route to reschedule an appointment
+router.put(
+  '/:id/reschedule',
+  verifyToken,
+  requireRole(['Patient']),
+  AppointmentController.rescheduleAppointment
+);
+
+// Route to cancel an appointment
+router.put(
+  '/:id/cancel',
+  verifyToken,
+  requireRole(['Patient']),
+  AppointmentController.cancelAppointment
+);
+
 module.exports = router;
