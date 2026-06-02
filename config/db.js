@@ -9,13 +9,19 @@ const isProduction = process.env.NODE_ENV === 'production';
 // Configuration parameters
 const poolConfig = process.env.DATABASE_URL ? {
   connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false }
+  ssl: { rejectUnauthorized: false },
+  max: 3, // Prevent overloading Prisma's connection limits
+  connectionTimeoutMillis: 15000,
+  idleTimeoutMillis: 30000
 } : {
   user: process.env.DB_USER,
   host: process.env.DB_HOST,
   database: process.env.DB_NAME,
   password: process.env.DB_PASSWORD,
   port: parseInt(process.env.DB_PORT || '5432', 10),
+  max: 3,
+  connectionTimeoutMillis: 15000,
+  idleTimeoutMillis: 30000
 };
 
 // If in production, secure connection might be required
@@ -26,6 +32,10 @@ if (isProduction && !process.env.DATABASE_URL) {
 }
 
 const pool = new Pool(poolConfig);
+
+pool.on('error', (err, client) => {
+  console.error('Unexpected error on idle database client', err);
+});
 
 /**
  * Robust function to test the database connection.

@@ -91,7 +91,8 @@ class DoctorModel {
         age as patient_age,
         gender as patient_gender,
         mobile_number as patient_contact,
-        payment_method
+        payment_method,
+        is_rescheduled
       FROM appointments 
       WHERE doctor_id = $1 
       ORDER BY appointment_date ASC, start_time ASC

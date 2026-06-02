@@ -86,7 +86,27 @@ exports.updateFee = async (req, res) => {
 exports.getAppointments = async (req, res) => {
   try {
     const doctorId = req.user.id;
-    const appointments = await DoctorModel.getAppointmentsByDoctorId(doctorId);
+    const { filter } = req.query;
+    let appointments = await DoctorModel.getAppointmentsByDoctorId(doctorId);
+
+    if (filter === 'today') {
+      const today = new Date();
+      const yyyy = today.getFullYear();
+      const mm = String(today.getMonth() + 1).padStart(2, '0');
+      const dd = String(today.getDate()).padStart(2, '0');
+      const todayLocalStr = `${yyyy}-${mm}-${dd}`;
+
+      appointments = appointments.filter(apt => {
+        const aptDate = new Date(apt.appointment_date);
+        const aptYyyy = aptDate.getFullYear();
+        const aptMm = String(aptDate.getMonth() + 1).padStart(2, '0');
+        const aptDd = String(aptDate.getDate()).padStart(2, '0');
+        const aptLocalStr = `${aptYyyy}-${aptMm}-${aptDd}`;
+        
+        return aptLocalStr === todayLocalStr;
+      });
+    }
+
     res.status(200).json({ success: true, appointments });
   } catch (error) {
     console.error('Error fetching appointments:', error);

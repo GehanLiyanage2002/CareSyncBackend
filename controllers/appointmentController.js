@@ -85,8 +85,30 @@ class AppointmentController {
   static async getDoctorAppointments(req, res, next) {
     try {
       const doctorId = req.user.id;
+      const { filter } = req.query;
       
-      const appointments = await DoctorModel.getAppointmentsByDoctorId(doctorId);
+      let appointments = await DoctorModel.getAppointmentsByDoctorId(doctorId);
+
+      if (filter === 'today') {
+        const today = new Date();
+        const yyyy = today.getFullYear();
+        const mm = String(today.getMonth() + 1).padStart(2, '0');
+        const dd = String(today.getDate()).padStart(2, '0');
+        const todayLocalStr = `${yyyy}-${mm}-${dd}`;
+
+        console.log(`[FILTER] todayLocalStr: ${todayLocalStr}`);
+
+        appointments = appointments.filter(apt => {
+          const aptDate = new Date(apt.appointment_date);
+          const aptYyyy = aptDate.getFullYear();
+          const aptMm = String(aptDate.getMonth() + 1).padStart(2, '0');
+          const aptDd = String(aptDate.getDate()).padStart(2, '0');
+          const aptLocalStr = `${aptYyyy}-${aptMm}-${aptDd}`;
+          
+          console.log(`[FILTER] apt.id: ${apt.id}, aptDate in DB: ${apt.appointment_date}, aptLocalStr: ${aptLocalStr}, match: ${aptLocalStr === todayLocalStr}`);
+          return aptLocalStr === todayLocalStr;
+        });
+      }
 
       res.status(200).json({
         success: true,
@@ -301,6 +323,181 @@ class AppointmentController {
       });
     } catch (error) {
       console.error('Error fetching configured dates:', error);
+      next(error);
+    }
+  }
+
+  /**
+   * @route   PUT /api/appointments/:id/reschedule
+   * @desc    Reschedule an existing appointment
+   * @access  Private (Patient only)
+   */
+  static async rescheduleAppointment(req, res, next) {
+    try {
+      const { id } = req.params;
+      const { new_date, new_time } = req.body;
+      const patientId = req.user.id;
+
+      const appointmentResult = await db.query('SELECT * FROM appointments WHERE id = $1', [id]);
+      const appointment = appointmentResult.rows[0];
+
+      if (!appointment) {
+        return res.status(404).json({ success: false, message: 'Appointment not found' });
+      }
+
+      if (appointment.patient_id !== patientId) {
+        return res.status(403).json({ success: false, message: 'Unauthorized to reschedule this appointment' });
+      }
+
+      if (appointment.status.toLowerCase() !== 'pending') {
+        return res.status(400).json({ success: false, message: 'Only Pending appointments can be rescheduled.' });
+      }
+
+      // 1-hour reschedule window: only allow rescheduling within 60 minutes of booking
+      const createdAt = new Date(appointment.created_at);
+      const minutesSinceBooking = (Date.now() - createdAt.getTime()) / (1000 * 60);
+      if (minutesSinceBooking > 60) {
+        return res.status(403).json({ success: false, message: 'Rescheduling is only allowed within 1 hour of booking.' });
+      }
+
+      const dateStr = appointment.appointment_date instanceof Date 
+        ? `${appointment.appointment_date.getFullYear()}-${String(appointment.appointment_date.getMonth() + 1).padStart(2, '0')}-${String(appointment.appointment_date.getDate()).padStart(2, '0')}`
+        : appointment.appointment_date.split('T')[0];
+      
+      let timeStr = '00:00';
+      if (appointment.start_time instanceof Date) {
+        timeStr = `${String(appointment.start_time.getHours()).padStart(2, '0')}:${String(appointment.start_time.getMinutes()).padStart(2, '0')}`;
+      } else {
+        timeStr = appointment.start_time.substring(0, 5);
+      }
+
+      const apptDateTime = new Date(`${dateStr}T${timeStr}:00`);
+
+      if (apptDateTime.getTime() < Date.now()) {
+        return res.status(400).json({ success: false, message: 'Cannot modify a past appointment.' });
+      }
+
+      const hoursDiff = (apptDateTime.getTime() - Date.now()) / (1000 * 60 * 60);
+
+      if (hoursDiff < 1) {
+        return res.status(403).json({ success: false, message: 'Modifications are not allowed within 1 hour of the scheduled appointment time.' });
+      }
+
+      const newApptDateTime = new Date(`${new_date}T${new_time}:00`);
+      
+      const tomorrow = new Date();
+      tomorrow.setHours(0, 0, 0, 0);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+
+      if (newApptDateTime.getTime() < tomorrow.getTime()) {
+        return res.status(400).json({ success: false, message: 'Appointments can only be rescheduled to tomorrow or a later date.' });
+      }
+
+      // Combine date and time to proper JS Date for Prisma
+      // Prisma expects a valid Date object for DateTime fields.
+      const updatedDate = new Date(new_date);
+      // For Time(6), we need a Date object. Usually appending the time to a dummy date works.
+      const updatedTime = new Date(`1970-01-01T${new_time}`);
+
+      const updatedResult = await db.query(
+        "UPDATE appointments SET appointment_date = $1, start_time = $2, is_rescheduled = true, status = 'Pending' WHERE id = $3 RETURNING *",
+        [new_date, new_time, id]
+      );
+      const updated = updatedResult.rows[0];
+
+      // Emit socket event
+      const io = req.app.get('io');
+      if (io) {
+        io.emit('appointmentRescheduled', { 
+          doctor_id: updated.doctor_id, 
+          appointment_id: updated.id,
+          new_date: updated.appointment_date, 
+          new_time: updated.start_time 
+        });
+      }
+
+      // Notify Doctor
+      const NotificationService = require('../services/notificationService');
+      await NotificationService.sendNotification(
+        io,
+        updated.doctor_id,
+        'Appointment Rescheduled',
+        `Patient ${appointment.patient_name} rescheduled their appointment to ${new_date} at ${new_time}.`,
+        'warning'
+      );
+
+      res.status(200).json({
+        success: true,
+        message: 'Appointment rescheduled successfully',
+        appointment: updated,
+      });
+    } catch (error) {
+      console.error('Error rescheduling appointment:', error);
+      next(error);
+    }
+  }
+
+  /**
+   * @route   PUT /api/appointments/:id/cancel
+   * @desc    Cancel an existing appointment
+   * @access  Private (Patient only)
+   */
+  static async cancelAppointment(req, res, next) {
+    try {
+      const { id } = req.params;
+      const patientId = req.user.id;
+
+      const appointmentResult = await db.query('SELECT * FROM appointments WHERE id = $1', [id]);
+      const appointment = appointmentResult.rows[0];
+
+      if (!appointment) {
+        return res.status(404).json({ success: false, message: 'Appointment not found' });
+      }
+
+      if (appointment.patient_id !== patientId) {
+        return res.status(403).json({ success: false, message: 'Unauthorized to cancel this appointment' });
+      }
+
+      if (appointment.status.toLowerCase() !== 'pending' && appointment.status.toLowerCase() !== 'confirmed') {
+        return res.status(400).json({ success: false, message: 'Only Pending or Confirmed appointments can be cancelled.' });
+      }
+
+      const dateStr = appointment.appointment_date instanceof Date 
+        ? `${appointment.appointment_date.getFullYear()}-${String(appointment.appointment_date.getMonth() + 1).padStart(2, '0')}-${String(appointment.appointment_date.getDate()).padStart(2, '0')}`
+        : appointment.appointment_date.split('T')[0];
+      
+      let timeStr = '00:00';
+      if (appointment.start_time instanceof Date) {
+        timeStr = `${String(appointment.start_time.getHours()).padStart(2, '0')}:${String(appointment.start_time.getMinutes()).padStart(2, '0')}`;
+      } else {
+        timeStr = appointment.start_time.substring(0, 5);
+      }
+
+      const apptDateTime = new Date(`${dateStr}T${timeStr}:00`);
+
+      if (apptDateTime.getTime() < Date.now()) {
+        return res.status(400).json({ success: false, message: 'Cannot modify a past appointment.' });
+      }
+
+      const hoursDiff = (apptDateTime.getTime() - Date.now()) / (1000 * 60 * 60);
+
+      if (hoursDiff < 1) {
+        return res.status(403).json({ success: false, message: 'Modifications are not allowed within 1 hour of the scheduled appointment time.' });
+      }
+
+      const updatedResult = await db.query(
+        'UPDATE appointments SET status = $1 WHERE id = $2 RETURNING *',
+        ['Cancelled', id]
+      );
+      const updated = updatedResult.rows[0];
+
+      res.status(200).json({
+        success: true,
+        message: 'Appointment cancelled successfully',
+        appointment: updated,
+      });
+    } catch (error) {
+      console.error('Error cancelling appointment:', error);
       next(error);
     }
   }
