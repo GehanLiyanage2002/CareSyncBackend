@@ -1,5 +1,5 @@
-# Use Node.js LTS (18-alpine is lightweight and secure)
-FROM node:18-alpine
+# Use standard Node 18 (Debian-based) to avoid native build errors
+FROM node:18
 
 # Set working directory
 WORKDIR /usr/src/app
@@ -7,8 +7,8 @@ WORKDIR /usr/src/app
 # Copy package.json and package-lock.json
 COPY package*.json ./
 
-# Install production dependencies only
-RUN npm ci --only=production
+# Install dependencies (using npm install is more forgiving than npm ci)
+RUN npm install --omit=dev
 
 # Copy the rest of the application code
 COPY . .
