@@ -3,7 +3,7 @@
 # =========================
 node_modules/
 */node_modules/
-
+.antigravitycli/
 # =========================
 # Build outputs
 # =========================
@@ -17,6 +17,7 @@ build/
 # =========================
 .env
 .env.local
+.env.example
 .env.development.local
 .env.test.local
 .env.production.local
@@ -78,3 +79,4 @@ cypress/videos/
 # =========================
 .tmp/
 .temp/
+/generated/prisma
