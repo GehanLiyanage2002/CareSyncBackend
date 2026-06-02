@@ -112,7 +112,7 @@ class AuthController {
           id: 'admin-static-id',
           role: 'Admin'
         };
-        const token = jwt.sign(payload, process.env.JWT_SECRET || 'supersecretjwtkey12345!', { expiresIn: '1d' });
+        const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '1d' });
         
         return res.status(200).json({
           success: true,
@@ -159,7 +159,7 @@ class AuthController {
 
       const token = jwt.sign(
         payload,
-        process.env.JWT_SECRET || 'supersecretjwtkey12345!',
+        process.env.JWT_SECRET,
         { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
       );
 
@@ -221,7 +221,7 @@ class AuthController {
 
       const token = jwt.sign(
         payload,
-        process.env.JWT_SECRET || 'supersecretjwtkey12345!',
+        process.env.JWT_SECRET,
         { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
       );
 
@@ -318,7 +318,7 @@ class AuthController {
 
       const token = jwt.sign(
         payload,
-        process.env.JWT_SECRET || 'supersecretjwtkey12345!',
+        process.env.JWT_SECRET,
         { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
       );
 

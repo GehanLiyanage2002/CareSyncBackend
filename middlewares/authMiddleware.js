@@ -17,7 +17,7 @@ const verifyToken = (req, res, next) => {
       token = req.headers.authorization.split(' ')[1];
 
       // Verify token
-      const decoded = jwt.verify(token, process.env.JWT_SECRET || 'supersecretjwtkey12345!');
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
       // Add user from payload to request object
       req.user = decoded;

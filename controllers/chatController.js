@@ -29,9 +29,9 @@ exports.handleChat = async (req, res) => {
     const searchResult = await db.query(`
        SELECT content, 1 - (embedding <=> $1::vector) AS similarity 
        FROM system_knowledge 
-       WHERE 1 - (embedding <=> $1::vector) > 0.7 
+       WHERE 1 - (embedding <=> $1::vector) > 0.3 
        ORDER BY similarity DESC 
-       LIMIT 3
+       LIMIT 7
     `, [userEmbeddingStr]);
 
     let combinedContext = "";
@@ -44,6 +44,8 @@ exports.handleChat = async (req, res) => {
     const systemPrompt = `You are the CareSync system assistant. You ONLY answer questions related to CareSync.
 If the user asks a question that is NOT related to CareSync or the provided context, you must reply: "I can only answer questions related to the CareSync platform."
 Answer based ONLY on the following Context. If the context does not contain the answer, say "I don't have information on that."
+
+IMPORTANT: Do NOT use any Markdown formatting (no asterisks **, no hashes #, etc.). Provide your response in pure plain text so it displays correctly on the frontend.
 
 Context:
 ${combinedContext}`;
