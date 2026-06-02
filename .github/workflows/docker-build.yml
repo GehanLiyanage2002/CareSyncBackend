@@ -6,7 +6,7 @@ on:
       - deployment
 
 env:
-  REGISTRY_NAME: caresyncregistry.azurecr.io
+  REGISTRY_NAME: caresync.azurecr.io
   IMAGE_NAME: caresync-backend
 
 jobs:
