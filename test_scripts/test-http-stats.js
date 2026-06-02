@@ -4,7 +4,8 @@ async function test() {
   try {
     // We need an admin token. Let's just create a quick token.
     const jwt = require('jsonwebtoken');
-    const token = jwt.sign({ id: 'admin-id', role: 'Admin' }, process.env.JWT_SECRET || 'fallback_secret', { expiresIn: '1h' });
+    require('dotenv').config();
+    const token = jwt.sign({ id: 'admin-id', role: 'Admin' }, process.env.JWT_SECRET, { expiresIn: '1h' });
     
     console.log("Token:", token);
 

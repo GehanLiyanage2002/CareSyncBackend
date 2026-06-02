@@ -2,7 +2,7 @@ const http = require('http');
 const jwt = require('jsonwebtoken');
 require('dotenv').config();
 
-const token = jwt.sign({ id: 'admin-static-id', role: 'Admin' }, process.env.JWT_SECRET || 'supersecretjwtkey12345!', { expiresIn: '1d' });
+const token = jwt.sign({ id: 'admin-static-id', role: 'Admin' }, process.env.JWT_SECRET, { expiresIn: '1d' });
 const bearerToken = `Bearer ${token}`;
 
 console.log('Sending request to /api/admin/stats with token:', bearerToken.substring(0, 60) + '...');

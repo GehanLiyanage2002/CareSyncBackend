@@ -1,7 +1,8 @@
 const jwt = require('jsonwebtoken');
+require('dotenv').config();
 
 // Create admin token
-const token = jwt.sign({ id: 1, role: 'Admin' }, 'supersecretjwtkey12345!', { expiresIn: '1h' });
+const token = jwt.sign({ id: 1, role: 'Admin' }, process.env.JWT_SECRET, { expiresIn: '1h' });
 const headers = { 
   'Authorization': `Bearer ${token}`,
   'Content-Type': 'application/json'
