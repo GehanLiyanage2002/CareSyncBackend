@@ -1,5 +1,5 @@
 # Use standard Node 18 (Debian-based) to avoid native build errors
-FROM node:18
+FROM node:22
 
 # Set working directory
 WORKDIR /usr/src/app
