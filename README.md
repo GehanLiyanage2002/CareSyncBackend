@@ -1,145 +1,119 @@
-# CareSync Backend
+# 🏥 CareSync - Modern Healthcare Management Platform
 
-CareSync Backend is a comprehensive RESTful API service built with Node.js, Express, and PostgreSQL (via Prisma ORM). It powers the CareSync platform, facilitating healthcare management, telemedicine, doctor appointments, real-time chat, and medical reports.
+CareSync is a comprehensive, scalable, and secure healthcare management platform designed to bridge the gap between patients, doctors, receptionists, and hospital administrators. It features telemedicine capabilities, AI-powered health assistants, real-time communications, and role-based dashboards.
 
-## Tech Stack
+---
 
-- **Runtime**: Node.js
-- **Framework**: Express.js
-- **Database**: PostgreSQL
-- **ORM**: Prisma
-- **Real-time**: Socket.IO
-- **Authentication**: JWT (JSON Web Tokens) & bcryptjs
-- **Integrations**: 
-  - Azure Communication Identity (Telemedicine / Video Calls)
-  - OpenAI (AI features)
-  - Nodemailer (Email notifications)
+## 🏗️ Architecture & Technology Stack
 
-## Features
+The platform is divided into a robust micro-services style architecture, containerized and deployed on Microsoft Azure.
 
-- **Authentication & Authorization**: Secure login, registration, and role-based access control (Admin, Doctor, Patient).
-- **User Management**: Profile management for patients and doctors.
-- **Appointments**: Schedule, manage, and track doctor appointments.
-- **Telemedicine**: Video consultation support using Azure Communication Services.
-- **Real-time Chat**: In-app messaging via Socket.IO.
-- **Medical Reports**: Upload, store, and manage medical reports and prescriptions (multer).
-- **Reviews**: Patient feedback and doctor ratings.
-- **Notifications**: Real-time updates and email notifications.
-- **Admin Dashboard**: Comprehensive management of system entities.
+### 💻 Frontend (`CareSyncFrontend`)
+- **Framework:** React.js (Vite for fast bundling)
+- **Styling:** Tailwind CSS (Modern, responsive UI)
+- **State Management:** Redux Toolkit
+- **Routing:** React Router DOM
+- **Real-Time:** Socket.IO Client
+- **Telemedicine:** Azure Communication Services (Calling & Chat UI)
+- **AI/Biometrics:** `face-api.js` for facial recognition login
+- **Utilities:** `jspdf` & `jspdf-autotable` for generating medical prescriptions and reports
+- **Drag & Drop:** `@hello-pangea/dnd` for the Doctor's Kanban appointment board
 
-## Prerequisites
+### ⚙️ Backend (`CareSyncBackend`)
+- **Framework:** Node.js with Express.js
+- **Database:** PostgreSQL
+- **ORM:** Prisma (Type-safe database access and migrations)
+- **Real-Time:** Socket.IO (Chat, notifications, WebRTC signaling)
+- **Security:** JWT (JSON Web Tokens), `bcryptjs`
+- **AI Integration:** Azure OpenAI (Smart healthcare assistant)
+- **Telemedicine:** Azure Communication Identity (Token generation for video calls)
+- **File Uploads:** Multer (For medical reports, profile pictures, and service images)
+- **Email Service:** Nodemailer (OTP verification, appointment alerts)
 
-- **Node.js** (v18 or higher recommended)
-- **PostgreSQL** (Running instance)
-- **Prisma CLI** (Optional, for manual DB management)
+### ☁️ Infrastructure & Deployment
+- **Containerization:** Docker
+- **Orchestration:** Azure Kubernetes Service (AKS)
+- **Routing:** NGINX Ingress Controller
+- **Security:** TLS/HTTPS via `cert-manager` & Let's Encrypt
+- **Registry:** Azure Container Registry (ACR)
 
-## Setup & Installation
+---
 
-1. **Clone the repository** (if not already done):
+## 🔄 System Flow
+
+### 1. Authentication & Security Flow
+- **Registration:** Users (Patients/Doctors) register. An OTP is instantly sent via Nodemailer for email verification to prevent spam accounts.
+- **Biometric Setup:** Users can optionally register their facial geometry (`face_descriptor`) during profile setup.
+- **Login:** Users authenticate via password or facial recognition. Upon success, a secure JWT is issued.
+- **RBAC (Role-Based Access Control):** The JWT payload strictly dictates access to specific routes (Patient, Doctor, Receptionist, or Admin).
+
+### 2. Patient Flow
+- **Dashboard:** Centralized hub to view upcoming appointments, recent medical reports, and interact with the AI assistant.
+- **Booking:** Browse available doctors and hospital services. Select time slots (validated in real-time against `doctor_schedules`) and confirm bookings.
+- **Telemedicine:** Join a secure video room via Azure Communication Services at the exact time of the appointment.
+- **History:** Access comprehensive medical history and download PDF prescriptions.
+
+### 3. Doctor Flow
+- **Kanban Dashboard:** Manage daily appointments using an intuitive drag-and-drop Kanban board (moving patients from *Pending* -> *Confirmed* -> *Completed*).
+- **Consultation:** Join telemedicine rooms, chat with patients, and update medical records on the fly.
+- **Availability:** Dynamically set working schedules, slot durations, and consultation fees.
+- **Reviews:** View patient feedback and ratings.
+
+### 4. Admin & Receptionist Flow
+- **Admin:** Approve new doctor registrations, manage global hospital services, and oversee system analytics.
+- **Receptionist:** Handle in-person walk-ins, manually book appointments, and manage the live physical queue via token numbers.
+
+---
+
+## 🗄️ Database Schema Highlights (Prisma)
+
+The PostgreSQL database is heavily relational to ensure data integrity:
+- **`users`**: Core identity table storing all roles (Patient, Doctor, Admin, Receptionist) and biometric descriptors.
+- **`doctor_profiles` & `doctor_schedules`**: Manages doctor-specific metadata, pricing, and availability constraints.
+- **`appointments` & `service_bookings`**: The central transactional tables tracking all consultations and hospital services (e.g., MRI, X-Ray).
+- **`medical_reports`**: Stores metadata and file paths for uploaded patient records.
+- **`reviews`**: Links patients, doctors, and appointments for quality assurance.
+
+---
+
+## 🔒 Security Measures
+
+- **Data in Transit:** All external traffic is forcefully encrypted using HTTPS via Let's Encrypt SSL/TLS certificates.
+- **Authentication:** Stateless JWT authentication prevents session hijacking and CSRF vulnerabilities.
+- **Biometrics:** `face-api.js` enables highly secure, passwordless authentication, ensuring the person logging in is physically present.
+- **Data Protection:** All user passwords are irreversibly hashed with `bcrypt`. Database connection strings and API keys are stored securely in Kubernetes Secrets.
+- **Network Isolation:** Kubernetes internal services (like the Node.js backend) are completely isolated from the public internet. Only the NGINX Ingress Controller exposes necessary endpoints (`/api` and `/socket.io`).
+- **CORS & Proxying:** Frontend NGINX is configured to dynamically rewrite API routes, preventing Cross-Origin Resource Sharing (CORS) exploits and obscuring internal network topologies.
+
+---
+
+## 🚀 Deployment Guide (AKS)
+
+1. **Build & Push Images:**
    ```bash
-   git clone <repository_url>
-   cd CareSyncBackend
+   docker build -t caresync.azurecr.io/caresync-backend:latest ./CareSyncBackend
+   docker build -t caresync.azurecr.io/caresync-frontend:latest ./CareSyncFrontend
+   docker push caresync.azurecr.io/caresync-backend:latest
+   docker push caresync.azurecr.io/caresync-frontend:latest
    ```
-
-2. **Install dependencies**:
+2. **Apply Secrets:**
+   Ensure database URLs and Azure keys are applied to the cluster via Kubernetes Secrets (`secret.yaml`).
+3. **Deploy Workloads:**
    ```bash
-   npm install
+   kubectl apply -f backend/deployment.yaml
+   kubectl apply -f frontend/deployment.yaml
    ```
-
-3. **Environment Variables Configuration**:
-   Create a `.env` file in the root directory and add the necessary environment variables. Example variables to include:
-   ```env
-   PORT=5000
-   NODE_ENV=development
-   
-   # Database Configuration
-   DATABASE_URL="postgresql://user:password@localhost:5432/caresync?schema=public"
-   
-   # JWT Secret
-   JWT_SECRET="your_jwt_secret_key"
-   JWT_EXPIRES_IN="7d"
-   
-   # Azure Communication Services (Telemedicine)
-   AZURE_COMMUNICATION_CONNECTION_STRING="your_azure_connection_string"
-   
-   # OpenAI Config
-   OPENAI_API_KEY="your_openai_key"
-   
-   # Email Config (Nodemailer)
-   EMAIL_HOST="smtp.example.com"
-   EMAIL_PORT=587
-   EMAIL_USER="your_email@example.com"
-   EMAIL_PASS="your_email_password"
-   ```
-   *(Update the values according to your local or production setup)*
-
-4. **Database Setup & Migrations**:
-   Run the Prisma setup or custom migrations to initialize the database schema:
+4. **Configure Ingress & TLS:**
    ```bash
-   # If using custom migrations script:
-   npm run migrate
+   # Assign Azure DNS Label to Public IP
+   az network public-ip update --resource-group <rg-name> --name <ip-name> --dns-name caresync-app
    
-   # If using Prisma:
-   npx prisma generate
-   npx prisma db push
+   # Apply Let's Encrypt Issuer and Ingress
+   kubectl apply -f ingress/cluster-issuer.yaml
+   kubectl apply -f ingress/nginx-ingress.yaml
    ```
-
-5. **Seed Database** (Optional):
-   Populate the database with initial dummy data:
+5. **Database Migrations:**
+   Exec into the backend pod and run Prisma migrations to initialize the schema:
    ```bash
-   npx prisma db seed
+   kubectl exec -it deployment/caresync-backend -- npm run migrate
    ```
-
-## Running the Application
-
-- **Development Mode** (with auto-reload):
-  ```bash
-  npm run dev
-  ```
-- **Production Mode**:
-  ```bash
-  npm start
-  ```
-
-The server will start on `http://localhost:5000` (or the port specified in `.env`).
-
-## API Endpoints Overview
-
-The API routes are mounted at `/api`. Basic routes include:
-
-- `GET /api/health` - Server health check
-- `POST /api/auth/register` - Register a new user
-- `POST /api/auth/login` - Login and receive JWT
-- `GET /api/users` - User management endpoints
-- `GET /api/doctor` - Doctor management endpoints
-- `GET /api/appointments` - Appointment handling
-- `GET /api/chat` - Chat history and endpoints
-- `GET /api/telemedicine` - Telemedicine room generation
-
-*(For complete API documentation, refer to the Postman collection or Swagger docs if available).*
-
-## Project Structure
-
-```
-CareSyncBackend/
-├── config/           # Configuration files (DB connection, etc.)
-├── controllers/      # Route controllers (business logic)
-├── middlewares/      # Express middlewares (auth, error handling)
-├── migrations/       # Database migration scripts
-├── models/           # Data models (if using raw queries)
-├── prisma/           # Prisma schema and seed scripts
-├── routes/           # API route definitions
-├── services/         # Third-party integrations & complex services
-├── utils/            # Helper functions
-├── app.js            # Express app setup
-├── server.js         # Server entry point & Socket.io setup
-└── package.json      # Dependencies and scripts
-```
-
-## Error Handling
-
-The application uses a centralized error-handling middleware that formats all API errors into a standard JSON response structure. It also handles unhandled promise rejections and uncaught exceptions to prevent server crashes.
-
-## License
-
-This project is licensed under the ISC License.
