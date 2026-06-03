@@ -1,10 +1,11 @@
 const jwt = require('jsonwebtoken');
+require('dotenv').config();
 
 async function testGetBookings() {
   try {
     const token = jwt.sign(
       { id: '1a0911fe-21a4-4488-ac7c-ac334a8ca359', email: 'chamikara@gmail.com', role: 'Patient' },
-      process.env.JWT_SECRET || 'supersecretjwtkey12345!',
+      process.env.JWT_SECRET,
       { expiresIn: '1d' }
     );
     console.log("Token generated for real patient!");
