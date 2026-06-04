@@ -1,7 +1,5 @@
-const { PrismaClient } = require('@prisma/client');
+const { pool } = require('../config/db');
 const bcrypt = require('bcryptjs');
-
-const prisma = new PrismaClient();
 
 const ReceptionistController = {
   /**
@@ -27,11 +25,9 @@ const ReceptionistController = {
       const patientEmail = email || `walkin_${Date.now()}@caresync.local`;
 
       // Check if email already exists
-      const existingUser = await prisma.users.findUnique({
-        where: { email: patientEmail }
-      });
+      const existingUser = await pool.query('SELECT id FROM users WHERE email = $1', [patientEmail]);
 
-      if (existingUser) {
+      if (existingUser.rows.length > 0) {
         return res.status(400).json({ message: 'A user with this email already exists.' });
       }
 
@@ -41,26 +37,25 @@ const ReceptionistController = {
       const password_hash = await bcrypt.hash(defaultPassword, salt);
 
       // Create the patient user with medical details
-      const newPatient = await prisma.users.create({
-        data: {
-          full_name: name,
-          email: patientEmail,
-          password_hash,
-          role: 'Patient',
-          mobile_number: phone,
-          blood_group: blood_group || null,
-          emergency_contact_name: emergency_contact_name || null,
-          emergency_contact_number: emergency_contact_number || null,
-          is_verified: true, // Auto verify walk-in patients
-        }
-      });
+      const result = await pool.query(
+        `INSERT INTO users (
+          full_name, email, password_hash, role, mobile_number, 
+          blood_group, emergency_contact_name, emergency_contact_number, is_verified
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *`,
+        [
+          name, patientEmail, password_hash, 'Patient', phone,
+          blood_group || null, emergency_contact_name || null, emergency_contact_number || null, true
+        ]
+      );
+
+      const newPatient = result.rows[0];
 
       // Remove sensitive data before sending response
-      const { password_hash: _, ...patientDetails } = newPatient;
+      delete newPatient.password_hash;
 
       return res.status(201).json({
         message: 'Walk-in patient registered successfully',
-        patient: patientDetails
+        patient: newPatient
       });
     } catch (error) {
       console.error('Error registering walk-in patient:', error);
