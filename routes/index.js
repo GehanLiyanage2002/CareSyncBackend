@@ -34,5 +34,6 @@ router.use('/services', serviceRoutes);
 router.use('/telemedicine', telemedicineRoutes);
 router.use('/chat', require('./chatRoutes'));
 router.use('/notifications', require('./notificationRoutes'));
+router.use('/receptionist', require('./receptionistRoutes'));
 
 module.exports = router;
