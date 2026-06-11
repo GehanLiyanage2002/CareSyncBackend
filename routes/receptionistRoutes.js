@@ -9,4 +9,7 @@ router.use(verifyToken, requireRole(['Receptionist']));
 // Register a walk-in patient
 router.post('/register-patient', ReceptionistController.registerWalkInPatient);
 
+// Search for existing patients
+router.get('/search-patients', ReceptionistController.searchPatients);
+
 module.exports = router;
