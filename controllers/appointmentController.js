@@ -458,8 +458,8 @@ class AppointmentController {
         return res.status(403).json({ success: false, message: 'Unauthorized to cancel this appointment' });
       }
 
-      if (appointment.status.toLowerCase() !== 'pending' && appointment.status.toLowerCase() !== 'confirmed') {
-        return res.status(400).json({ success: false, message: 'Only Pending or Confirmed appointments can be cancelled.' });
+      if (appointment.status.toLowerCase() !== 'pending' && appointment.status.toLowerCase() !== 'in progress') {
+        return res.status(400).json({ success: false, message: 'Only Pending or In Progress appointments can be cancelled.' });
       }
 
       const dateStr = appointment.appointment_date instanceof Date 

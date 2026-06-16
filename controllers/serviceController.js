@@ -210,7 +210,7 @@ class ServiceController {
 
       const query = `
         INSERT INTO service_bookings (patient_id, service_id, appointment_date, appointment_time, amount_paid, status)
-        VALUES ($1, $2, $3, $4, $5, 'Confirmed')
+        VALUES ($1, $2, $3, $4, $5, 'In Progress')
         RETURNING id
       `;
       const result = await db.query(query, [
