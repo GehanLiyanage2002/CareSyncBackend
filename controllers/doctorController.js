@@ -195,3 +195,25 @@ exports.updateSchedule = async (req, res) => {
     res.status(500).json({ success: false, message: 'Server Error' });
   }
 };
+
+exports.deleteSchedule = async (req, res) => {
+  try {
+    const doctorId = req.user.id;
+    const scheduleId = req.params.id;
+
+    if (!scheduleId) {
+      return res.status(400).json({ success: false, message: 'Schedule ID is required' });
+    }
+
+    const deletedSchedule = await DoctorModel.deleteSchedule(doctorId, scheduleId);
+
+    if (!deletedSchedule) {
+      return res.status(404).json({ success: false, message: 'Schedule not found or unauthorized' });
+    }
+
+    res.status(200).json({ success: true, message: 'Schedule deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting schedule:', error);
+    res.status(500).json({ success: false, message: 'Server Error' });
+  }
+};
