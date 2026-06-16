@@ -1,5 +1,6 @@
 const { pool } = require('../config/db');
 const bcrypt = require('bcryptjs');
+const { decrypt } = require('../utils/cryptoUtils');
 
 const ReceptionistController = {
   /**
@@ -116,7 +117,20 @@ const ReceptionistController = {
         [searchTerm]
       );
 
-      return res.status(200).json(result.rows);
+      const decryptedPatients = result.rows.map(user => {
+        try {
+          return {
+            ...user,
+            email: user.email ? decrypt(user.email) : null,
+            mobile_number: user.mobile_number ? decrypt(user.mobile_number) : null,
+            emergency_contact_number: user.emergency_contact_number ? decrypt(user.emergency_contact_number) : null
+          };
+        } catch (err) {
+          return user;
+        }
+      });
+
+      return res.status(200).json(decryptedPatients);
     } catch (error) {
       console.error('Error searching patients:', error);
       return res.status(500).json({ message: 'Failed to search patients.' });
@@ -135,7 +149,21 @@ const ReceptionistController = {
          WHERE role = 'Patient'`
       );
 
-      return res.status(200).json(result.rows);
+      const decryptedPatients = result.rows.map(user => {
+        try {
+          return {
+            ...user,
+            email: user.email ? decrypt(user.email) : null,
+            mobile_number: user.mobile_number ? decrypt(user.mobile_number) : null,
+            emergency_contact_number: user.emergency_contact_number ? decrypt(user.emergency_contact_number) : null
+          };
+        } catch (err) {
+          // If decryption fails, return original to avoid crashing the whole list
+          return user;
+        }
+      });
+
+      return res.status(200).json(decryptedPatients);
     } catch (error) {
       console.error('Error fetching all patients:', error);
       return res.status(500).json({ message: 'Failed to fetch patients.' });
