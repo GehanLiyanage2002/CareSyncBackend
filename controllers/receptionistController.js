@@ -44,6 +44,12 @@ const ReceptionistController = {
         const updatedPatient = updateResult.rows[0];
         delete updatedPatient.password_hash;
 
+        // Emit socket event for real-time update
+        const io = req.app.get('io');
+        if (io) {
+          io.emit('patientUpdated', updatedPatient);
+        }
+
         return res.status(200).json({
           message: 'Existing patient updated successfully',
           patient: updatedPatient
@@ -71,6 +77,12 @@ const ReceptionistController = {
 
       // Remove sensitive data before sending response
       delete newPatient.password_hash;
+
+      // Emit socket event for real-time update
+      const io = req.app.get('io');
+      if (io) {
+        io.emit('patientRegistered', newPatient);
+      }
 
       return res.status(201).json({
         message: 'Walk-in patient registered successfully',

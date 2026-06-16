@@ -68,21 +68,29 @@ class AuthController {
         `Welcome to CareSync!\n\nYour verification code is: ${otp_code}\n\nPlease enter this code to complete your registration.`
       );
 
+      const userResponse = {
+        id: newUser.id,
+        full_name: newUser.full_name,
+        email: newUser.email,
+        role: newUser.role,
+        mobile_number: newUser.mobile_number,
+        blood_group: newUser.blood_group,
+        allergies: newUser.allergies,
+        is_verified: newUser.is_verified,
+        created_at: newUser.created_at
+      };
+
+      // Emit socket event for real-time update
+      const io = req.app.get('io');
+      if (io && role === 'Patient') {
+        io.emit('patientRegistered', userResponse);
+      }
+
       // 7. Return success response (without JWT)
       res.status(200).json({
         success: true,
         message: 'User registered successfully. Please check your email for the verification code.',
-        user: {
-          id: newUser.id,
-          full_name: newUser.full_name,
-          email: newUser.email,
-          role: newUser.role,
-          mobile_number: newUser.mobile_number,
-          blood_group: newUser.blood_group,
-          allergies: newUser.allergies,
-          is_verified: newUser.is_verified,
-          created_at: newUser.created_at
-        }
+        user: userResponse
       });
 
     } catch (error) {
