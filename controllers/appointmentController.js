@@ -174,10 +174,15 @@ class AppointmentController {
       const startMinutes = parseTimeToMinutes(start_time);
       const endMinutes = parseTimeToMinutes(end_time);
 
-      // Generate all possible slots
+      // Generate all possible slots as objects
       const allSlots = [];
+      let index = 0;
       for (let time = startMinutes; time + slot_duration_minutes <= endMinutes; time += slot_duration_minutes) {
-        allSlots.push(formatMinutesToTime(time));
+        allSlots.push({
+          time: formatMinutesToTime(time),
+          isBuffer: (index + 1) % 4 === 0 // Every 4th slot is a buffer/walk-in slot
+        });
+        index++;
       }
 
       // Fetch booked appointments for that date
@@ -194,7 +199,7 @@ class AppointmentController {
       });
 
       // Filter out booked slots
-      const availableSlots = allSlots.filter(slot => !bookedSlots.includes(slot));
+      const availableSlots = allSlots.filter(slotObj => !bookedSlots.includes(slotObj.time));
 
       res.status(200).json({
         success: true,
