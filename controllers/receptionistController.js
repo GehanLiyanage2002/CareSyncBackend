@@ -156,7 +156,8 @@ const ReceptionistController = {
             doctorName: app.doctor_name || 'Unknown Doctor',
             activeQueueCount: 0,
             upcomingAppointments: [],
-            activeQueue: []
+            activeQueue: [],
+            pendingAppointments: []
           };
         }
 
@@ -165,6 +166,8 @@ const ReceptionistController = {
         } else if (app.status === 'IN_QUEUE' || app.status === 'WITH_DOCTOR') {
           groupedData[docId].activeQueue.push(app);
           groupedData[docId].activeQueueCount++;
+        } else if (app.status === 'Pending' || app.status === 'pending') {
+          groupedData[docId].pendingAppointments.push(app);
         }
       });
 
@@ -303,6 +306,16 @@ const ReceptionistController = {
          WHERE id = $2`,
         [nextTokenNumber.toString(), appointmentId]
       );
+
+      // Emit socket event for real-time updates
+      const io = req.app.get('io');
+      if (io) {
+        io.emit('appointmentStatusChanged', {
+          appointment_id: appointmentId,
+          doctor_id: appointment.doctor_id,
+          status: 'IN_QUEUE'
+        });
+      }
 
       return res.status(200).json({
         message: 'Patient checked in successfully.',
