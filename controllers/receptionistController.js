@@ -25,20 +25,26 @@ const ReceptionistController = {
       // Generate a dummy email if not provided
       const patientEmail = email || `walkin_${Date.now()}@caresync.local`;
 
-      // Check if email already exists
-      const existingUser = await pool.query('SELECT id FROM users WHERE email = $1', [patientEmail]);
+      // Check if patient already exists by phone OR email
+      const existingUser = await pool.query(
+        'SELECT id, email FROM users WHERE mobile_number = $1 OR (email = $2 AND email NOT LIKE $3)',
+        [phone, email || '', 'walkin_%@caresync.local']
+      );
 
       if (existingUser.rows.length > 0) {
+        const patientToUpdate = existingUser.rows[0];
+        const finalEmail = email || patientToUpdate.email;
+
         // Update existing patient details
         const updateResult = await pool.query(
           `UPDATE users 
            SET full_name = $1, mobile_number = $2, blood_group = $3, 
-               emergency_contact_name = $4, emergency_contact_number = $5
-           WHERE email = $6
+               emergency_contact_name = $4, emergency_contact_number = $5, email = $6
+           WHERE id = $7
            RETURNING *`,
           [
             name, phone, blood_group || null,
-            emergency_contact_name || null, emergency_contact_number || null, patientEmail
+            emergency_contact_name || null, emergency_contact_number || null, finalEmail, patientToUpdate.id
           ]
         );
 
