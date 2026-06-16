@@ -12,6 +12,9 @@ router.post('/register-patient', ReceptionistController.registerWalkInPatient);
 // Search for existing patients
 router.get('/search-patients', ReceptionistController.searchPatients);
 
+// Get all patients for instant local search
+router.get('/all-patients', ReceptionistController.getAllPatients);
+
 // Get all queues for all doctors
 router.get('/all-queues', ReceptionistController.getAllQueues);
 

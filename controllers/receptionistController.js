@@ -124,6 +124,25 @@ const ReceptionistController = {
   },
 
   /**
+   * Get all patients for instantaneous frontend search
+   * GET /api/receptionist/all-patients
+   */
+  getAllPatients: async (req, res) => {
+    try {
+      const result = await pool.query(
+        `SELECT id, full_name, email, mobile_number, blood_group, emergency_contact_name, emergency_contact_number 
+         FROM users 
+         WHERE role = 'Patient'`
+      );
+
+      return res.status(200).json(result.rows);
+    } catch (error) {
+      console.error('Error fetching all patients:', error);
+      return res.status(500).json({ message: 'Failed to fetch patients.' });
+    }
+  },
+
+  /**
    * Get all queues for all doctors for today
    * GET /api/receptionist/all-queues
    */
