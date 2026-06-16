@@ -174,10 +174,15 @@ class AppointmentController {
       const startMinutes = parseTimeToMinutes(start_time);
       const endMinutes = parseTimeToMinutes(end_time);
 
-      // Generate all possible slots
+      // Generate all possible slots as objects
       const allSlots = [];
+      let index = 0;
       for (let time = startMinutes; time + slot_duration_minutes <= endMinutes; time += slot_duration_minutes) {
-        allSlots.push(formatMinutesToTime(time));
+        allSlots.push({
+          time: formatMinutesToTime(time),
+          isBuffer: (index + 1) % 4 === 0 // Every 4th slot is a buffer/walk-in slot
+        });
+        index++;
       }
 
       // Fetch booked appointments for that date
@@ -194,7 +199,7 @@ class AppointmentController {
       });
 
       // Filter out booked slots
-      const availableSlots = allSlots.filter(slot => !bookedSlots.includes(slot));
+      const availableSlots = allSlots.filter(slotObj => !bookedSlots.includes(slotObj.time));
 
       res.status(200).json({
         success: true,
@@ -212,7 +217,15 @@ class AppointmentController {
    */
   static async createAppointment(req, res, next) {
     try {
-      const patientId = req.user.id;
+      let patientId;
+      if (req.user.role === 'Receptionist') {
+        patientId = req.body.patient_id;
+        if (!patientId) {
+          return res.status(400).json({ success: false, message: 'patient_id is required for Receptionist booking' });
+        }
+      } else {
+        patientId = req.user.id;
+      }
       const { 
         doctor_id, 
         appointment_date, 
@@ -458,8 +471,8 @@ class AppointmentController {
         return res.status(403).json({ success: false, message: 'Unauthorized to cancel this appointment' });
       }
 
-      if (appointment.status.toLowerCase() !== 'pending' && appointment.status.toLowerCase() !== 'confirmed') {
-        return res.status(400).json({ success: false, message: 'Only Pending or Confirmed appointments can be cancelled.' });
+      if (appointment.status.toLowerCase() !== 'pending' && appointment.status.toLowerCase() !== 'in progress') {
+        return res.status(400).json({ success: false, message: 'Only Pending or In Progress appointments can be cancelled.' });
       }
 
       const dateStr = appointment.appointment_date instanceof Date 

@@ -203,6 +203,12 @@ class UserController {
     }
   }
 
+  // Simple in-memory cache for doctors
+  static _doctorsCache = {
+    data: {},
+    timestamp: {}
+  };
+
   /**
    * @route   GET /api/users/doctors
    * @desc    Get a list of all doctors (optionally filtered by availability)
@@ -212,8 +218,24 @@ class UserController {
     try {
       const db = require('../config/db');
       const { decrypt } = require('../utils/cryptoUtils');
+      const { date } = req.query;
       
-      const query = `
+      const cacheKey = date || 'all';
+      const cacheExpiryMs = 5 * 60 * 1000; // 5 minutes cache
+      
+      // Return cached data if valid
+      if (
+        UserController._doctorsCache.data[cacheKey] && 
+        (Date.now() - UserController._doctorsCache.timestamp[cacheKey]) < cacheExpiryMs
+      ) {
+        return res.status(200).json({
+          success: true,
+          doctors: UserController._doctorsCache.data[cacheKey],
+          cached: true
+        });
+      }
+
+      let query = `
         SELECT 
           u.id as doctor_id, 
           u.full_name as name, 
@@ -228,25 +250,45 @@ class UserController {
           COALESCE(dp.location, 'Not specified') as location,
           COALESCE(dp.consultation_fee, 1500) as "consultationFee",
           '4.8' as rating,
-          '4.8' as rating
+          (SELECT json_agg(schedule_date) FROM doctor_schedules ds WHERE ds.doctor_id = u.id AND ds.schedule_date >= CURRENT_DATE) as schedule_dates
         FROM users u
         LEFT JOIN doctor_profiles dp ON u.id = dp.doctor_id
         WHERE u.role = 'Doctor' AND dp.is_approved = true
       `;
       
-      const result = await db.query(query);
+      const queryParams = [];
+      if (date) {
+        query += ` AND EXISTS (SELECT 1 FROM doctor_schedules ds WHERE ds.doctor_id = u.id AND ds.schedule_date = $1)`;
+        queryParams.push(date);
+      }
+      
+      const result = await db.query(query, queryParams);
       
       // Decrypt the encrypted fields
       const doctors = result.rows.map(doc => {
+        // Format schedule dates
+        let parsedDates = [];
+        if (doc.schedule_dates) {
+          parsedDates = doc.schedule_dates.map(d => {
+            const dateObj = new Date(d);
+            return `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}-${String(dateObj.getDate()).padStart(2, '0')}`;
+          });
+        }
+
         return {
           ...doc,
           specialization: doc.specialization ? decrypt(doc.specialization) : 'Not Specified',
           experience: doc.experience ? decrypt(doc.experience) : 'Not Specified',
           about: doc.about ? decrypt(doc.about) : 'No bio available',
           qualifications: doc.qualifications ? decrypt(doc.qualifications) : 'Not Specified',
-          image: `http://localhost:5000/api/users/profile-image/${doc.doctor_id}?t=${new Date().getTime()}`
+          image: `http://localhost:5000/api/users/profile-image/${doc.doctor_id}`,
+          schedule_dates: parsedDates
         };
       });
+
+      // Update cache
+      UserController._doctorsCache.data[cacheKey] = doctors;
+      UserController._doctorsCache.timestamp[cacheKey] = Date.now();
 
       res.status(200).json({
         success: true,

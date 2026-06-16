@@ -155,6 +155,40 @@ class AdminController {
   }
 
   /**
+   * @route   GET /api/admin/patients/:id/appointments
+   * @desc    Get all appointments for a specific patient
+   * @access  Private (Admin)
+   */
+  static async getPatientAppointments(req, res, next) {
+    try {
+      const { id } = req.params;
+      const query = `
+        SELECT 
+          a.id, a.appointment_date as date, a.start_time as time, a.status, a.reason,
+          d.full_name as doctor_name,
+          dp.specialization as doctor_specialization
+        FROM appointments a
+        JOIN users d ON a.doctor_id = d.id
+        LEFT JOIN doctor_profiles dp ON d.id = dp.doctor_id
+        WHERE a.patient_id = $1
+        ORDER BY a.appointment_date DESC, a.start_time DESC
+      `;
+      const result = await db.query(query, [id]);
+      
+      const { decrypt } = require('../utils/cryptoUtils');
+      const appointments = result.rows.map(row => ({
+        ...row,
+        reason: row.reason ? decrypt(row.reason) : null,
+        doctor_specialization: row.doctor_specialization ? decrypt(row.doctor_specialization) : 'Not Specified',
+      }));
+
+      res.status(200).json({ success: true, appointments });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
    * @route   GET /api/admin/appointments
    * @desc    Get all appointments history
    * @access  Private (Admin)

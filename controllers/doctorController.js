@@ -119,10 +119,15 @@ exports.updateAppointmentStatus = async (req, res) => {
     const doctorId = req.user.id;
     const { id } = req.params;
     const { status: reqStatus } = req.body;
-    // Map status to TitleCase
-    const status = reqStatus ? reqStatus.charAt(0).toUpperCase() + reqStatus.slice(1).toLowerCase() : '';
+    let status = reqStatus;
 
-    if (!['Pending', 'Confirmed', 'Completed', 'Cancelled'].includes(status)) {
+    if (status && status.toLowerCase() === 'in progress') {
+      status = 'In Progress';
+    } else if (status) {
+      status = status.charAt(0).toUpperCase() + status.slice(1).toLowerCase();
+    }
+
+    if (!['Pending', 'In Progress', 'Completed', 'Cancelled'].includes(status)) {
       return res.status(400).json({ success: false, message: 'Invalid status' });
     }
 
@@ -137,6 +142,7 @@ exports.updateAppointmentStatus = async (req, res) => {
     if (io) {
       io.emit('appointmentStatusChanged', {
         appointment_id: id,
+        doctor_id: doctorId,
         status,
         patient_id: updated.patient_id
       });
@@ -149,7 +155,7 @@ exports.updateAppointmentStatus = async (req, res) => {
       updated.patient_id,
       'Appointment Status Updated',
       `Your appointment status has been updated to ${status}.`,
-      status === 'Confirmed' ? 'success' : status === 'Cancelled' ? 'error' : 'info'
+      status === 'In Progress' ? 'success' : status === 'Cancelled' ? 'error' : 'info'
     );
 
     res.status(200).json({ success: true, appointment: updated });

@@ -184,7 +184,16 @@ class ServiceController {
    */
   static async bookService(req, res, next) {
     try {
-      const patientId = req.user.id;
+      let patientId;
+      if (req.user.role === 'Receptionist') {
+        patientId = req.body.patient_id;
+        if (!patientId) {
+          return res.status(400).json({ success: false, message: 'patient_id is required for Receptionist booking' });
+        }
+      } else {
+        patientId = req.user.id;
+      }
+      
       const { service_id, date, time, amount_paid } = req.body;
 
       if (!service_id || !date || !time || !amount_paid) {
@@ -210,7 +219,7 @@ class ServiceController {
 
       const query = `
         INSERT INTO service_bookings (patient_id, service_id, appointment_date, appointment_time, amount_paid, status)
-        VALUES ($1, $2, $3, $4, $5, 'Confirmed')
+        VALUES ($1, $2, $3, $4, $5, 'In Progress')
         RETURNING id
       `;
       const result = await db.query(query, [
