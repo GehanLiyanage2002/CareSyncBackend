@@ -17,10 +17,10 @@ class DoctorModel {
   }
 
   static async upsertProfile(doctorId, profileData) {
-    const { specialization, experience, bio, location, qualifications } = profileData;
+    const { specialization, experience, bio, location, qualifications, id_card_front, id_card_front_mimetype, id_card_rear, id_card_rear_mimetype } = profileData;
     const query = `
-      INSERT INTO doctor_profiles (doctor_id, specialization, experience, bio, location, qualifications, updated_at)
-      VALUES ($1, $2, $3, $4, $5, $6, CURRENT_TIMESTAMP)
+      INSERT INTO doctor_profiles (doctor_id, specialization, experience, bio, location, qualifications, id_card_front, id_card_front_mimetype, id_card_rear, id_card_rear_mimetype, updated_at)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, CURRENT_TIMESTAMP)
       ON CONFLICT (doctor_id) 
       DO UPDATE SET 
         specialization = EXCLUDED.specialization,
@@ -28,10 +28,25 @@ class DoctorModel {
         bio = EXCLUDED.bio,
         location = EXCLUDED.location,
         qualifications = EXCLUDED.qualifications,
+        id_card_front = COALESCE(EXCLUDED.id_card_front, doctor_profiles.id_card_front),
+        id_card_front_mimetype = COALESCE(EXCLUDED.id_card_front_mimetype, doctor_profiles.id_card_front_mimetype),
+        id_card_rear = COALESCE(EXCLUDED.id_card_rear, doctor_profiles.id_card_rear),
+        id_card_rear_mimetype = COALESCE(EXCLUDED.id_card_rear_mimetype, doctor_profiles.id_card_rear_mimetype),
         updated_at = CURRENT_TIMESTAMP
       RETURNING *;
     `;
-    const result = await db.query(query, [doctorId, encrypt(specialization), encrypt(experience), encrypt(bio), location || '', encrypt(qualifications || '')]);
+    const result = await db.query(query, [
+      doctorId, 
+      encrypt(specialization), 
+      encrypt(experience), 
+      encrypt(bio), 
+      location || '', 
+      encrypt(qualifications || ''),
+      id_card_front || null,
+      id_card_front_mimetype || null,
+      id_card_rear || null,
+      id_card_rear_mimetype || null
+    ]);
     const row = result.rows[0];
     if (!row) return row;
     return {
