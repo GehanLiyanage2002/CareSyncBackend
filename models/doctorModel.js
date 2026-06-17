@@ -136,6 +136,16 @@ class DoctorModel {
     const result = await db.query(query, [doctorId]);
     return result.rows;
   }
+
+  static async deleteSchedule(doctorId, scheduleId) {
+    const query = `
+      DELETE FROM doctor_schedules 
+      WHERE id = $1 AND doctor_id = $2
+      RETURNING *;
+    `;
+    const result = await db.query(query, [scheduleId, doctorId]);
+    return result.rows[0];
+  }
 }
 
 module.exports = DoctorModel;

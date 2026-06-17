@@ -18,5 +18,6 @@ router.put('/appointments/:id/status', DoctorController.updateAppointmentStatus)
 // Schedule routes
 router.get('/schedule', DoctorController.getSchedule);
 router.post('/schedule', DoctorController.updateSchedule);
+router.delete('/schedule/:id', DoctorController.deleteSchedule);
 
 module.exports = router;
