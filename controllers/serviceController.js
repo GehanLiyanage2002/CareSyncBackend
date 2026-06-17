@@ -1,433 +1,74 @@
-
-const db = require('../config/db');
+const asyncHandler = require('../utils/asyncHandler');
+const ApiResponse = require('../utils/ApiResponse');
+const ServiceService = require('../services/serviceService');
 
 class ServiceController {
-  /**
-   * @route   GET /api/services
-   * @desc    Get all medical services
-   * @access  Private
-   */
-  static async getAllServices(req, res, next) {
+  static getAllServices = asyncHandler(async (req, res) => {
+    const result = await ServiceService.getAllServices();
+    res.status(200).json(new ApiResponse(200, result));
+  });
+
+  static createService = asyncHandler(async (req, res) => {
+    const io = req.app?.get('io');
+    const result = await ServiceService.createService(req.body, io);
+    res.status(201).json(new ApiResponse(201, result, 'Service created successfully'));
+  });
+
+  static updateService = asyncHandler(async (req, res) => {
+    const io = req.app?.get('io');
+    const result = await ServiceService.updateService(req.params.id, req.body, io);
+    res.status(200).json(new ApiResponse(200, result, 'Service updated successfully'));
+  });
+
+  static uploadServiceImage = asyncHandler(async (req, res) => {
+    const io = req.app?.get('io');
+    const result = await ServiceService.uploadServiceImage(req.params.id, req.file, io);
+    res.status(200).json(new ApiResponse(200, result, 'Service image uploaded successfully'));
+  });
+
+  static getServiceImage = asyncHandler(async (req, res) => {
     try {
-      const query = `
-        SELECT id, name, description, location, price, is_available, 
-        CASE WHEN image IS NOT NULL THEN true ELSE false END as has_image
-        FROM services
-        ORDER BY name ASC
-      `;
-      const result = await db.query(query);
-      
-      res.status(200).json({
-        success: true,
-        services: result.rows
-      });
+      const result = await ServiceService.getServiceImage(req.params.id);
+      res.set('Content-Type', result.image_mimetype);
+      res.send(result.image);
     } catch (error) {
-      console.error('Error in getAllServices:', error);
-      next(error);
-    }
-  }
-
-  /**
-   * @route   POST /api/services
-   * @desc    Create a new medical service
-   * @access  Private (Admin Only)
-   */
-  static async createService(req, res, next) {
-    try {
-      const { name, price, description, location } = req.body;
-      
-      if (!name) {
-        res.status(400);
-        return next(new Error('Please provide name for the service'));
-      }
-
-      const query = `
-        INSERT INTO services (name, description, location, price, is_available)
-        VALUES ($1, $2, $3, $4, TRUE)
-        RETURNING id, name, description, location, price, is_available
-      `;
-      const result = await db.query(query, [name, description || null, location || null, Number(price || 0)]);
-
-      // Emit socket event for real-time updates
-      const io = req.app?.get('io');
-      if (io) {
-        io.emit('serviceAdded', { service: result.rows[0] });
-      }
-
-      res.status(201).json({
-        success: true,
-        message: 'Service created successfully',
-        service: result.rows[0]
-      });
-    } catch (error) {
-      console.error('Error in createService:', error);
-      next(error);
-    }
-  }
-
-  /**
-   * @route   PUT /api/services/:id
-   * @desc    Update service details or availability
-   * @access  Private (Admin Only)
-   */
-  static async updateService(req, res, next) {
-    try {
-      const { id } = req.params;
-      const { name, price, is_available, description, location } = req.body;
-
-      if (!name || is_available === undefined) {
-        res.status(400);
-        return next(new Error('Please provide name and availability status'));
-      }
-
-      const query = `
-        UPDATE services
-        SET name = $1, description = $2, location = $3, price = $4, is_available = $5
-        WHERE id = $6
-        RETURNING id, name, description, location, price, is_available
-      `;
-      const result = await db.query(query, [name, description || null, location || null, Number(price || 0), is_available, id]);
-
-      if (result.rows.length === 0) {
-        res.status(404);
-        return next(new Error('Service not found'));
-      }
-
-      // Emit socket event for real-time updates
-      const io = req.app?.get('io');
-      if (io) {
-        io.emit('serviceUpdated', { service: result.rows[0] });
-      }
-
-      res.status(200).json({
-        success: true,
-        message: 'Service updated successfully',
-        service: result.rows[0]
-      });
-    } catch (error) {
-      console.error('Error in updateService:', error);
-      next(error);
-    }
-  }
-
-  /**
-   * @route   PUT /api/services/:id/image
-   * @desc    Upload service image
-   * @access  Private (Admin Only)
-   */
-  static async uploadServiceImage(req, res, next) {
-    try {
-      const { id } = req.params;
-      
-      if (!req.file) {
-        res.status(400);
-        return next(new Error('Please upload an image file'));
-      }
-
-      const query = `
-        UPDATE services
-        SET image = $1, image_mimetype = $2
-        WHERE id = $3
-        RETURNING id
-      `;
-      
-      const result = await db.query(query, [req.file.buffer, req.file.mimetype, id]);
-      
-      if (result.rows.length === 0) {
-        res.status(404);
-        return next(new Error('Service not found'));
-      }
-      
-      // Emit socket event for real-time updates
-      const io = req.app?.get('io');
-      if (io) {
-        io.emit('serviceImageUpdated', { serviceId: id });
-      }
-      
-      res.status(200).json({
-        success: true,
-        message: 'Service image uploaded successfully'
-      });
-    } catch (error) {
-      console.error('Error in uploadServiceImage:', error);
-      next(error);
-    }
-  }
-
-  /**
-   * @route   GET /api/services/:id/image
-   * @desc    Get service image
-   * @access  Public
-   */
-  static async getServiceImage(req, res, next) {
-    try {
-      const { id } = req.params;
-      const query = `SELECT image, image_mimetype FROM services WHERE id = $1`;
-      const result = await db.query(query, [id]);
-      
-      if (result.rows.length === 0 || !result.rows[0].image) {
+      if (error.statusCode === 404) {
         return res.status(404).send('Image not found');
       }
-      
-      res.set('Content-Type', result.rows[0].image_mimetype);
-      res.send(result.rows[0].image);
-    } catch (error) {
-      console.error('Error in getServiceImage:', error);
-      res.status(500).send('Server Error');
+      throw error;
     }
-  }
+  });
 
-  /**
-   * @route   POST /api/services/book
-   * @desc    Book a medical service
-   * @access  Private (Patient Only)
-   */
-  static async bookService(req, res, next) {
-    try {
-      let patientId;
-      if (req.user.role === 'Receptionist') {
-        patientId = req.body.patient_id;
-        if (!patientId) {
-          return res.status(400).json({ success: false, message: 'patient_id is required for Receptionist booking' });
-        }
-      } else {
-        patientId = req.user.id;
-      }
-      
-      const { service_id, date, time, amount_paid } = req.body;
+  static bookService = asyncHandler(async (req, res) => {
+    const result = await ServiceService.bookService(req.user.role, req.user.id, req.body);
+    res.status(201).json(new ApiResponse(201, result, 'Service booked successfully'));
+  });
 
-      if (!service_id || !date || !time || !amount_paid) {
-        res.status(400);
-        return next(new Error('Please provide service_id, date, time, and amount_paid'));
-      }
+  static getMyBookings = asyncHandler(async (req, res) => {
+    const result = await ServiceService.getMyBookings(req.user.role, req.user.id);
+    res.status(200).json(new ApiResponse(200, result));
+  });
 
-      // Check if service is available
-      const checkService = await db.query(
-        'SELECT is_available, name FROM services WHERE id = $1',
-        [service_id]
-      );
-      
-      if (checkService.rows.length === 0) {
-        res.status(404);
-        return next(new Error('Service not found'));
-      }
+  static getServiceSchedules = asyncHandler(async (req, res) => {
+    const result = await ServiceService.getServiceSchedules(req.params.id);
+    res.status(200).json(new ApiResponse(200, result));
+  });
 
-      if (!checkService.rows[0].is_available) {
-        res.status(400);
-        return next(new Error('This service is currently unavailable'));
-      }
+  static addServiceSchedule = asyncHandler(async (req, res) => {
+    const result = await ServiceService.addServiceSchedule(req.params.id, req.body);
+    res.status(201).json(new ApiResponse(201, result, 'Schedule added successfully'));
+  });
 
-      const query = `
-        INSERT INTO service_bookings (patient_id, service_id, appointment_date, appointment_time, amount_paid, status)
-        VALUES ($1, $2, $3, $4, $5, 'In Progress')
-        RETURNING id
-      `;
-      const result = await db.query(query, [
-        patientId,
-        service_id,
-        date,
-        time,
-        Number(amount_paid)
-      ]);
+  static deleteServiceSchedule = asyncHandler(async (req, res) => {
+    const result = await ServiceService.deleteServiceSchedule(req.params.scheduleId);
+    res.status(200).json(new ApiResponse(200, result, 'Schedule deleted successfully'));
+  });
 
-      res.status(201).json({
-        success: true,
-        message: 'Service booked successfully',
-        booking: {
-          id: result.rows[0].id
-        }
-      });
-    } catch (error) {
-      console.error('Error in bookService:', error);
-      next(error);
-    }
-  }
-
-  /**
-   * @route   GET /api/services/bookings
-   * @desc    Get bookings history for patient or all bookings for Admin
-   * @access  Private
-   */
-  static async getMyBookings(req, res, next) {
-    try {
-      let query;
-      let params = [];
-
-      if (req.user.role === 'Admin') {
-        query = `
-          SELECT sb.id, s.name AS "serviceName", 
-                 TO_CHAR(sb.appointment_date, 'YYYY-MM-DD') AS date, 
-                 TO_CHAR(sb.appointment_time, 'HH24:MI') AS time, 
-                 sb.amount_paid AS price,
-                 sb.status,
-                 u.full_name AS "patientName"
-          FROM service_bookings sb
-          JOIN services s ON sb.service_id = s.id
-          JOIN users u ON sb.patient_id = u.id
-          ORDER BY sb.appointment_date DESC, sb.appointment_time DESC
-        `;
-      } else {
-        query = `
-          SELECT sb.id, s.name AS "serviceName", 
-                 TO_CHAR(sb.appointment_date, 'YYYY-MM-DD') AS date, 
-                 TO_CHAR(sb.appointment_time, 'HH24:MI') AS time, 
-                 sb.amount_paid AS price,
-                 sb.status
-          FROM service_bookings sb
-          JOIN services s ON sb.service_id = s.id
-          WHERE sb.patient_id = $1
-          ORDER BY sb.appointment_date DESC, sb.appointment_time DESC
-        `;
-        params = [req.user.id];
-      }
-
-      const result = await db.query(query, params);
-
-      res.status(200).json({
-        success: true,
-        bookings: result.rows
-      });
-    } catch (error) {
-      console.error('Error in getMyBookings:', error);
-      next(error);
-    }
-  }
-
-  /**
-   * @route   GET /api/services/:id/schedules
-   * @desc    Get schedules for a specific service
-   * @access  Private
-   */
-  static async getServiceSchedules(req, res, next) {
-    try {
-      const { id } = req.params;
-      const query = `
-        SELECT id, service_id, TO_CHAR(schedule_date, 'YYYY-MM-DD') AS schedule_date,
-               day_of_week,
-               TO_CHAR(start_time, 'HH24:MI') AS start_time,
-               TO_CHAR(end_time, 'HH24:MI') AS end_time
-        FROM service_schedules
-        WHERE service_id = $1
-        ORDER BY schedule_date ASC, day_of_week ASC, start_time ASC
-      `;
-      const result = await db.query(query, [id]);
-      
-      res.status(200).json({
-        success: true,
-        schedules: result.rows
-      });
-    } catch (error) {
-      console.error('Error fetching service schedules:', error);
-      next(error);
-    }
-  }
-
-  /**
-   * @route   POST /api/services/:id/schedules
-   * @desc    Add a schedule to a service
-   * @access  Private (Admin Only)
-   */
-  static async addServiceSchedule(req, res, next) {
-    try {
-      const { id } = req.params;
-      const { schedule_date, day_of_week, start_time, end_time } = req.body;
-
-      if (!id || id === 'undefined' || isNaN(parseInt(id))) {
-        res.status(400);
-        return next(new Error('Invalid service ID'));
-      }
-
-      if (!start_time || !end_time) {
-        res.status(400);
-        return next(new Error('Please provide start time and end time.'));
-      }
-      
-      if (!schedule_date && !day_of_week) {
-        res.status(400);
-        return next(new Error('Please provide either a specific date or a day of the week.'));
-      }
-
-      const query = `
-        INSERT INTO service_schedules (service_id, schedule_date, day_of_week, start_time, end_time)
-        VALUES ($1, $2, $3, $4, $5)
-        RETURNING id, service_id, TO_CHAR(schedule_date, 'YYYY-MM-DD') AS schedule_date,
-                  day_of_week,
-                  TO_CHAR(start_time, 'HH24:MI') AS start_time,
-                  TO_CHAR(end_time, 'HH24:MI') AS end_time
-      `;
-      const result = await db.query(query, [id, schedule_date || null, day_of_week || null, start_time, end_time]);
-
-      res.status(201).json({
-        success: true,
-        message: 'Schedule added successfully',
-        schedule: result.rows[0]
-      });
-    } catch (error) {
-      if (error.code === '23505') { // Unique violation
-        res.status(400);
-        return next(new Error('A schedule for this date already exists.'));
-      }
-      console.error('Error adding service schedule:', error);
-      next(error);
-    }
-  }
-
-  /**
-   * @route   DELETE /api/services/schedules/:scheduleId
-   * @desc    Delete a service schedule
-   * @access  Private (Admin Only)
-   */
-  static async deleteServiceSchedule(req, res, next) {
-    try {
-      const { scheduleId } = req.params;
-      const result = await db.query('DELETE FROM service_schedules WHERE id = $1 RETURNING id', [scheduleId]);
-
-      if (result.rows.length === 0) {
-        res.status(404);
-        return next(new Error('Schedule not found.'));
-      }
-
-      res.status(200).json({
-        success: true,
-        message: 'Schedule deleted successfully'
-      });
-    } catch (error) {
-      console.error('Error deleting service schedule:', error);
-      next(error);
-    }
-  }
-  /**
-   * @route   DELETE /api/services/:id
-   * @desc    Delete a medical service
-   * @access  Private (Admin Only)
-   */
-  static async deleteService(req, res, next) {
-    try {
-      const { id } = req.params;
-      
-      const checkResult = await db.query('SELECT id FROM services WHERE id = $1', [id]);
-      if (checkResult.rows.length === 0) {
-        res.status(404);
-        return next(new Error('Service not found'));
-      }
-
-      await db.query('DELETE FROM services WHERE id = $1', [id]);
-
-      // Emit socket event for real-time updates
-      const io = req.app?.get('io');
-      if (io) {
-        io.emit('serviceDeleted', { serviceId: id });
-      }
-
-      res.status(200).json({
-        success: true,
-        message: 'Service removed completely.'
-      });
-    } catch (error) {
-      console.error('Error deleting service:', error);
-      next(error);
-    }
-  }
+  static deleteService = asyncHandler(async (req, res) => {
+    const io = req.app?.get('io');
+    const result = await ServiceService.deleteService(req.params.id, io);
+    res.status(200).json(new ApiResponse(200, result, 'Service removed completely.'));
+  });
 }
 
 module.exports = ServiceController;

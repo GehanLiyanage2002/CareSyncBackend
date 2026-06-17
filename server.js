@@ -15,6 +15,8 @@ const server = app.listen(PORT, async () => {
 
   // Initialize Database schemas
   await User.setupUsersTable();
+  const PatientModel = require('./models/patientModel');
+  await PatientModel.setupPatientProfilesTable();
 
   console.log('=============================================');
   console.log(`CareSync Backend Server Started Successfully`);

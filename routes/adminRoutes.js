@@ -20,6 +20,7 @@ router.use(adminOnly);
 
 router.get('/stats', AdminController.getStats);
 router.get('/doctors', AdminController.getDoctors);
+router.get('/doctors/:id/id-card/:side', AdminController.getDoctorIdCard);
 router.post('/doctors', AdminController.createDoctor);
 router.put('/doctors/:id/approve', AdminController.toggleDoctorApproval);
 router.put('/doctors/:id/schedule', AdminController.updateDoctorSchedule);

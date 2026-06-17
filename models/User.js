@@ -7,12 +7,7 @@ class User {
     return {
       ...record,
       mobile_number: decrypt(record.mobile_number),
-      blood_group: decrypt(record.blood_group),
-      allergies: decrypt(record.allergies),
-      face_descriptor: decrypt(record.face_descriptor),
-      chronic_conditions: decrypt(record.chronic_conditions),
-      emergency_contact_name: decrypt(record.emergency_contact_name),
-      emergency_contact_number: decrypt(record.emergency_contact_number)
+      face_descriptor: decrypt(record.face_descriptor)
     };
   }
 
@@ -39,8 +34,6 @@ class User {
         password_hash VARCHAR(255) NOT NULL,
         role user_role NOT NULL,
         mobile_number VARCHAR(20),
-        blood_group VARCHAR(10),
-        allergies TEXT,
         face_descriptor TEXT,
         is_verified BOOLEAN DEFAULT FALSE,
         otp_code VARCHAR(10),
@@ -62,12 +55,7 @@ class User {
       -- Add missing columns for existing tables
       DO $$ BEGIN
         ALTER TABLE users ADD COLUMN IF NOT EXISTS mobile_number TEXT;
-        ALTER TABLE users ADD COLUMN IF NOT EXISTS blood_group TEXT;
-        ALTER TABLE users ADD COLUMN IF NOT EXISTS allergies TEXT;
         ALTER TABLE users ADD COLUMN IF NOT EXISTS face_descriptor TEXT;
-        ALTER TABLE users ADD COLUMN IF NOT EXISTS chronic_conditions TEXT;
-        ALTER TABLE users ADD COLUMN IF NOT EXISTS emergency_contact_name TEXT;
-        ALTER TABLE users ADD COLUMN IF NOT EXISTS emergency_contact_number TEXT;
       EXCEPTION WHEN others THEN null;
       END $$;
     `;
@@ -108,8 +96,6 @@ class User {
       password_hash,
       role,
       mobile_number = null,
-      blood_group = null,
-      allergies = null,
       face_descriptor = null,
       is_verified = false,
       otp_code = null
@@ -117,9 +103,9 @@ class User {
 
     const queryText = `
       INSERT INTO users
-        (full_name, email, password_hash, role, mobile_number, blood_group, allergies, face_descriptor, is_verified, otp_code)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-      RETURNING id, full_name, email, role, mobile_number, blood_group, allergies, is_verified, otp_code, created_at;
+        (full_name, email, password_hash, role, mobile_number, face_descriptor, is_verified, otp_code)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      RETURNING id, full_name, email, role, mobile_number, is_verified, otp_code, created_at;
     `;
     const values = [
       full_name,
@@ -127,8 +113,6 @@ class User {
       password_hash,
       role,
       encrypt(mobile_number),
-      encrypt(blood_group),
-      encrypt(allergies),
       encrypt(face_descriptor),
       is_verified,
       otp_code
@@ -204,34 +188,8 @@ class User {
 
   /**
    * Update a patient's medical profile
-   * @param {string} id User UUID
-   * @param {Object} profileData Data to update
-   * @returns {Object|null} Updated user
+   * (Moved to PatientModel.js)
    */
-  static async updatePatientProfile(id, { blood_group, allergies, chronic_conditions, emergency_contact_name, emergency_contact_number }) {
-    const queryText = `
-      UPDATE users 
-      SET blood_group = $1, allergies = $2, chronic_conditions = $3, emergency_contact_name = $4, emergency_contact_number = $5
-      WHERE id = $6 AND role = 'Patient'
-      RETURNING id, full_name, email, role, blood_group, allergies, chronic_conditions, emergency_contact_name, emergency_contact_number, created_at;
-    `;
-    const values = [
-      encrypt(blood_group), 
-      encrypt(allergies), 
-      encrypt(chronic_conditions),
-      encrypt(emergency_contact_name),
-      encrypt(emergency_contact_number),
-      id
-    ];
-
-    try {
-      const result = await db.query(queryText, values);
-      return User.decryptUserRecord(result.rows[0]) || null;
-    } catch (err) {
-      console.error('Error updating patient profile:', err.message);
-      throw err;
-    }
-  }
 
   /**
    * Update a user's general profile
