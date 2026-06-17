@@ -36,5 +36,6 @@ router.use('/chat', require('./chatRoutes'));
 router.use('/notifications', require('./notificationRoutes'));
 router.use('/receptionist', require('./receptionistRoutes'));
 router.use('/payment', require('./paymentRoutes'));
+router.use('/accessibility', require('./accessibilityRoutes'));
 
 module.exports = router;
