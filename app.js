@@ -8,14 +8,16 @@ const { errorHandler } = require('./middlewares/errorMiddleware');
 const app = express();
 
 // Global Middlewares
-app.use(helmet());
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: "cross-origin" }
+}));
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // Limit each IP to 100 requests per windowMs
+  max: 5000, // Limit each IP to 5000 requests per windowMs (increased for development)
   message: 'Too many requests from this IP, please try again later.'
 });
 
