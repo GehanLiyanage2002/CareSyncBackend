@@ -11,7 +11,7 @@ class AuthService {
   static async registerUser(bodyData, filesData, io) {
     const { sanitizeObject, isValidEmail, isValidMobile } = require('../utils/validators');
     const sanitizedBody = sanitizeObject(bodyData);
-    const { full_name, email, password, role, mobile_number, specialization, experience, bio, faceDescriptor, address, date_of_birth } = sanitizedBody;
+    const { full_name, email, password, role, mobile_number, specialization, experience, bio, faceDescriptor, address, date_of_birth, medical_id } = sanitizedBody;
 
     if (!full_name || !email || !password || !role) {
       throw new ApiError(400, 'Please provide full_name, email, password, and role.');
@@ -51,7 +51,7 @@ class AuthService {
       role,
       mobile_number: mobile_number || null,
       otp_code,
-      face_descriptor: faceDescriptor ? JSON.stringify(faceDescriptor) : null
+      face_descriptor: faceDescriptor ? (typeof faceDescriptor === 'string' ? faceDescriptor : JSON.stringify(faceDescriptor)) : null
     });
 
     if (role === 'Doctor') {
@@ -71,7 +71,12 @@ class AuthService {
         }
       }
 
+      if (!id_card_front || !id_card_rear) {
+        throw new ApiError(400, 'Please provide both front and back photos of your Medical Council ID.');
+      }
+
       await DoctorModel.upsertProfile(newUser.id, {
+        medical_id: medical_id || null,
         specialization: specialization || null,
         experience: experience || null,
         bio: bio || null,
