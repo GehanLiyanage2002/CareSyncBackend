@@ -175,7 +175,7 @@ class UserService {
       if (doc.schedule_dates) {
         parsedDates = doc.schedule_dates.map(d => {
           const dateObj = new Date(d);
-          return \`\${dateObj.getFullYear()}-\${String(dateObj.getMonth() + 1).padStart(2, '0')}-\${String(dateObj.getDate()).padStart(2, '0')}\`;
+          return `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}-${String(dateObj.getDate()).padStart(2, '0')}`;
         });
       }
 
@@ -185,7 +185,7 @@ class UserService {
         experience: doc.experience ? decrypt(doc.experience) : 'Not Specified',
         about: doc.about ? decrypt(doc.about) : 'No bio available',
         qualifications: doc.qualifications ? decrypt(doc.qualifications) : 'Not Specified',
-        image: \`http://localhost:5000/api/users/profile-image/\${doc.doctor_id}\`,
+        image: `http://localhost:5000/api/users/profile-image/${doc.doctor_id}`,
         schedule_dates: parsedDates
       };
     });
@@ -236,7 +236,7 @@ class UserService {
     }
 
     return {
-      imageUrl: \`http://localhost:5000/api/users/profile-image/\${userId}?t=\${Date.now()}\`
+      imageUrl: `http://localhost:5000/api/users/profile-image/${userId}?t=${Date.now()}`
     };
   }
 

@@ -1,33 +1,38 @@
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient({ accelerateUrl: process.env.DATABASE_URL });
+const db = require('../config/db');
 const ApiError = require('../utils/ApiError');
 
 class AccessibilityService {
   static async getSettings(userId) {
-    let settings = await prisma.accessibility_settings.findUnique({
-      where: { user_id: userId },
-    });
+    const result = await db.query(
+      'SELECT settings FROM accessibility_settings WHERE user_id = $1',
+      [userId]
+    );
 
-    if (!settings) {
+    if (result.rows.length === 0) {
       return {};
     }
-    return settings.settings;
+    return result.rows[0].settings;
   }
 
   static async updateSettings(userId, incomingSettings) {
-    const updatedSettings = await prisma.accessibility_settings.upsert({
-      where: { user_id: userId },
-      update: {
-        settings: incomingSettings,
-        updated_at: new Date(),
-      },
-      create: {
-        user_id: userId,
-        settings: incomingSettings,
-      },
-    });
+    let result = await db.query(
+      'SELECT id FROM accessibility_settings WHERE user_id = $1',
+      [userId]
+    );
 
-    return updatedSettings.settings;
+    if (result.rows.length > 0) {
+      result = await db.query(
+        'UPDATE accessibility_settings SET settings = $1, updated_at = NOW() WHERE user_id = $2 RETURNING settings',
+        [incomingSettings, userId]
+      );
+    } else {
+      result = await db.query(
+        'INSERT INTO accessibility_settings (user_id, settings, updated_at) VALUES ($1, $2, NOW()) RETURNING settings',
+        [userId, incomingSettings]
+      );
+    }
+
+    return result.rows[0].settings;
   }
 }
 
