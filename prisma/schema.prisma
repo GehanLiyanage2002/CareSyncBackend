@@ -43,12 +43,8 @@ model doctor_profiles {
   location         String?   @db.VarChar(255)
   consultation_fee Decimal?  @db.Decimal
   is_approved      Boolean?  @default(false)
-  qualifications         String?
-  id_card_front          Bytes?
-  id_card_front_mimetype String?   @db.VarChar(255)
-  id_card_rear           Bytes?
-  id_card_rear_mimetype  String?   @db.VarChar(255)
-  users                  users?    @relation(fields: [doctor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  qualifications   String?
+  users            users?    @relation(fields: [doctor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 }
 
 model doctor_schedules {

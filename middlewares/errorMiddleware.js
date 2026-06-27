@@ -2,10 +2,7 @@
  * Centralized Error Handling Middleware
  */
 const errorHandler = (err, req, res, next) => {
-  let statusCode = res.statusCode === 200 ? 500 : res.statusCode;
-  if (err.statusCode) {
-    statusCode = err.statusCode;
-  }
+  const statusCode = res.statusCode === 200 ? 500 : res.statusCode;
   
   const response = {
     success: false,
