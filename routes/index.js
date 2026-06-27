@@ -1,7 +1,5 @@
 const express = require('express');
 const router = express.Router();
-const dummyRoutes = require('./dummyRoutes');
-
 const authRoutes = require('./authRoutes');
 const userRoutes = require('./userRoutes');
 const doctorRoutes = require('./doctorRoutes');
@@ -22,7 +20,6 @@ router.get('/health', (req, res) => {
 });
 
 // Mount sub-routers
-router.use('/dummy', dummyRoutes);
 router.use('/auth', authRoutes);
 router.use('/users', userRoutes);
 router.use('/doctor', doctorRoutes);
