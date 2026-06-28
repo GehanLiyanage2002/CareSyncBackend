@@ -103,7 +103,7 @@ class AdminService {
     const result = await db.query(query, [is_approved, id]);
 
     if (result.rows.length === 0) {
-      throw new ApiError(404, 'Doctor profile not found');
+      throw new ApiError(400, 'Cannot approve: Doctor has not completed their profile setup yet.');
     }
 
     return { is_approved: result.rows[0].is_approved };
