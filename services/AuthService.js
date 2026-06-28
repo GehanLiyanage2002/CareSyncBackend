@@ -207,6 +207,57 @@ class AuthService {
     };
   }
 
+  static async forgotPassword(email) {
+    if (!email) {
+      throw new ApiError(400, 'Please provide an email address.');
+    }
+
+    const user = await User.findByEmail(email);
+    if (!user) {
+      throw new ApiError(404, 'No user found with this email address.');
+    }
+
+    const otp_code = Math.floor(100000 + Math.random() * 900000).toString();
+    await User.setOtp(email, otp_code);
+
+    await sendEmail(
+      email,
+      'CareSync Password Reset Code',
+      `Hello ${user.full_name},\n\nWe received a request to reset your password. Your password reset code is: ${otp_code}\n\nIf you did not request this, please ignore this email.`
+    );
+
+    return { message: 'Password reset code sent to your email.' };
+  }
+
+  static async resetPassword(email, otp, newPassword) {
+    if (!email || !otp || !newPassword) {
+      throw new ApiError(400, 'Please provide email, otp, and new password.');
+    }
+
+    if (newPassword.length < 6) {
+      throw new ApiError(400, 'Password must be at least 6 characters long.');
+    }
+
+    const user = await User.findByEmail(email);
+    if (!user) {
+      throw new ApiError(404, 'User not found.');
+    }
+
+    if (user.otp_code !== otp) {
+      throw new ApiError(400, 'Invalid or expired OTP.');
+    }
+
+    const salt = await bcrypt.genSalt(10);
+    const password_hash = await bcrypt.hash(newPassword, salt);
+
+    await User.updatePassword(user.id, password_hash);
+    
+    // Clear the OTP by verifying (or just clear it, verifyUser does exactly this)
+    await User.verifyUser(email);
+
+    return { message: 'Password reset successfully. You can now login with your new password.' };
+  }
+
   static async loginFace(faceDescriptor) {
     if (!faceDescriptor || !Array.isArray(faceDescriptor)) {
       throw new ApiError(400, 'Invalid face descriptor provided.');
