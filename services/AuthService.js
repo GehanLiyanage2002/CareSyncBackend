@@ -162,6 +162,22 @@ class AuthService {
       };
     }
 
+    if (email.toLowerCase() === 'receptionist' && password === 'receptionist 123') {
+      const payload = { id: 'receptionist-static-id', role: 'Receptionist' };
+      const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '1d' });
+      
+      return {
+        token: `Bearer ${token}`,
+        user: {
+          id: 'receptionist-static-id',
+          full_name: 'Receptionist',
+          email: 'receptionist',
+          role: 'Receptionist'
+        },
+        message: 'Receptionist login successful'
+      };
+    }
+
     const user = await User.findByEmail(email);
     if (!user) {
       throw new ApiError(401, 'Invalid credentials');
@@ -259,6 +275,10 @@ class AuthService {
     const user = await User.findByEmail(email);
     if (!user) {
       throw new ApiError(404, 'No user found with this email address.');
+    }
+
+    if (user.role === 'Admin' || user.role === 'Receptionist') {
+      throw new ApiError(403, 'Password reset is not allowed for this role. Please contact the system administrator.');
     }
 
     const otp_code = Math.floor(100000 + Math.random() * 900000).toString();
