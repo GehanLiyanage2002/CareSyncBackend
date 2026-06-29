@@ -179,6 +179,15 @@ class AuthService {
       }
     }
 
+    let gender = null;
+    if (user.role === 'Patient') {
+      const profile = await db.query('SELECT gender FROM patient_profiles WHERE patient_id = $1', [user.id]);
+      if (profile.rows.length > 0) {
+        const { decrypt } = require('../utils/cryptoUtils');
+        gender = profile.rows[0].gender ? decrypt(profile.rows[0].gender) : null;
+      }
+    }
+
     const payload = { id: user.id, role: user.role };
     const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRES_IN || '7d' });
 
@@ -192,6 +201,7 @@ class AuthService {
         mobile_number: user.mobile_number,
         face_descriptor: user.face_descriptor,
         profile_completed: user.profile_completed,
+        gender: gender,
         created_at: user.created_at
       },
       message: 'Login successful'
@@ -214,6 +224,15 @@ class AuthService {
 
     const updatedUser = await User.verifyUser(email);
 
+    let gender = null;
+    if (updatedUser.role === 'Patient') {
+      const profile = await db.query('SELECT gender FROM patient_profiles WHERE patient_id = $1', [updatedUser.id]);
+      if (profile.rows.length > 0) {
+        const { decrypt } = require('../utils/cryptoUtils');
+        gender = profile.rows[0].gender ? decrypt(profile.rows[0].gender) : null;
+      }
+    }
+
     const payload = { id: updatedUser.id, role: updatedUser.role };
     const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRES_IN || '7d' });
 
@@ -226,6 +245,7 @@ class AuthService {
         role: updatedUser.role,
         mobile_number: updatedUser.mobile_number,
         is_verified: updatedUser.is_verified,
+        gender: gender,
         created_at: updatedUser.created_at
       }
     };
@@ -352,6 +372,15 @@ class AuthService {
       throw new ApiError(403, 'Your account is pending admin approval.');
     }
 
+    let gender = null;
+    if (matchedUser.role === 'Patient') {
+      const profile = await db.query('SELECT gender FROM patient_profiles WHERE patient_id = $1', [matchedUser.id]);
+      if (profile.rows.length > 0) {
+        const { decrypt } = require('../utils/cryptoUtils');
+        gender = profile.rows[0].gender ? decrypt(profile.rows[0].gender) : null;
+      }
+    }
+
     const payload = { id: matchedUser.id, role: matchedUser.role };
     const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRES_IN || '7d' });
 
@@ -361,7 +390,8 @@ class AuthService {
         id: matchedUser.id,
         full_name: matchedUser.full_name,
         email: matchedUser.email,
-        role: matchedUser.role
+        role: matchedUser.role,
+        gender: gender
       }
     };
   }
