@@ -188,6 +188,7 @@ class AuthService {
         full_name: user.full_name,
         email: user.email,
         role: user.role,
+        mobile_number: user.mobile_number,
         face_descriptor: user.face_descriptor,
         profile_completed: user.profile_completed,
         created_at: user.created_at
@@ -222,6 +223,7 @@ class AuthService {
         full_name: updatedUser.full_name,
         email: updatedUser.email,
         role: updatedUser.role,
+        mobile_number: updatedUser.mobile_number,
         is_verified: updatedUser.is_verified,
         created_at: updatedUser.created_at
       }
