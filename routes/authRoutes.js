@@ -18,4 +18,10 @@ router.post('/verify-otp', AuthController.verifyOTP);
 // POST /api/auth/login-face
 router.post('/login-face', AuthController.loginFace);
 
+// POST /api/auth/forgot-password
+router.post('/forgot-password', AuthController.forgotPassword);
+
+// POST /api/auth/reset-password
+router.post('/reset-password', AuthController.resetPassword);
+
 module.exports = router;

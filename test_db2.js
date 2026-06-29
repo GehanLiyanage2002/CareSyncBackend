@@ -1,0 +1,1 @@
+const db = require('./config/db'); async function run() { try { const res = await db.query('SELECT full_name FROM users WHERE role = ''Doctor'''); console.log(res.rows.filter(r => !r.full_name)); } catch (e) { console.error(e.message); } process.exit(); } run();

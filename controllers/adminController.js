@@ -25,6 +25,13 @@ class AdminController {
     const { id } = req.params;
     const { is_approved } = req.body;
     const result = await AdminService.toggleDoctorApproval(id, is_approved);
+    
+    // Emit event to update UI in real-time
+    const io = req.app?.get('io');
+    if (io) {
+      io.emit('doctorProfileUpdated', { doctor_id: id, is_approved });
+    }
+    
     res.status(200).json(new ApiResponse(200, result, `Doctor ${is_approved ? 'approved' : 'suspended'} successfully.`));
   });
 

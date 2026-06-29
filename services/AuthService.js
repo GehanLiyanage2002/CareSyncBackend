@@ -11,7 +11,7 @@ class AuthService {
   static async registerUser(bodyData, filesData, io) {
     const { sanitizeObject, isValidEmail, isValidMobile } = require('../utils/validators');
     const sanitizedBody = sanitizeObject(bodyData);
-    const { full_name, email, password, role, mobile_number, specialization, experience, bio, faceDescriptor, address, date_of_birth } = sanitizedBody;
+    const { full_name, email, password, role, mobile_number, specialization, experience, bio, faceDescriptor, address, date_of_birth, medical_id } = sanitizedBody;
 
     if (!full_name || !email || !password || !role) {
       throw new ApiError(400, 'Please provide full_name, email, password, and role.');
@@ -51,7 +51,7 @@ class AuthService {
       role,
       mobile_number: mobile_number || null,
       otp_code,
-      face_descriptor: faceDescriptor ? JSON.stringify(faceDescriptor) : null
+      face_descriptor: faceDescriptor ? (typeof faceDescriptor === 'string' ? faceDescriptor : JSON.stringify(faceDescriptor)) : null
     });
 
     if (role === 'Doctor') {
@@ -71,7 +71,12 @@ class AuthService {
         }
       }
 
+      if (!id_card_front || !id_card_rear) {
+        throw new ApiError(400, 'Please provide both front and back photos of your Medical Council ID.');
+      }
+
       await DoctorModel.upsertProfile(newUser.id, {
+        medical_id: medical_id || null,
         specialization: specialization || null,
         experience: experience || null,
         bio: bio || null,
@@ -88,10 +93,31 @@ class AuthService {
       });
     }
 
+    const verificationHtml = `
+      <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
+        <div style="background: linear-gradient(135deg, #059669 0%, #10b981 100%); padding: 24px; text-align: center;">
+          <h1 style="color: white; margin: 0; font-size: 28px; font-weight: 700; letter-spacing: 0.5px;">CareSync</h1>
+        </div>
+        <div style="padding: 32px; background-color: #ffffff; color: #374151; font-size: 16px; line-height: 1.6; text-align: center;">
+          <h2 style="margin-top: 0; color: #1f2937; font-size: 20px;">Welcome to CareSync!</h2>
+          <p>Your verification code is:</p>
+          <div style="margin: 30px auto; max-width: max-content; padding: 15px 40px; background-color: #ecfdf5; border: 2px dashed #10b981; border-radius: 8px; letter-spacing: 8px; font-size: 32px; font-weight: 800; color: #059669;">
+            ${otp_code}
+          </div>
+          <p style="margin-bottom: 0;">Please enter this code in the app to complete your registration.</p>
+        </div>
+        <div style="background-color: #f9fafb; padding: 20px; text-align: center; color: #6b7280; font-size: 14px; border-top: 1px solid #f3f4f6;">
+          <p style="margin: 0; padding-bottom: 8px;">CareSync Medical Center</p>
+          <p style="margin: 0; font-size: 12px;">© ${new Date().getFullYear()} All rights reserved.</p>
+        </div>
+      </div>
+    `;
+
     await sendEmail(
       email, 
       'CareSync Verification Code', 
-      `Welcome to CareSync!\n\nYour verification code is: ${otp_code}\n\nPlease enter this code to complete your registration.`
+      `Welcome to CareSync!\n\nYour verification code is: ${otp_code}\n\nPlease enter this code to complete your registration.`,
+      verificationHtml
     );
 
     const userResponse = {
@@ -200,6 +226,78 @@ class AuthService {
         created_at: updatedUser.created_at
       }
     };
+  }
+
+  static async forgotPassword(email) {
+    if (!email) {
+      throw new ApiError(400, 'Please provide an email address.');
+    }
+
+    const user = await User.findByEmail(email);
+    if (!user) {
+      throw new ApiError(404, 'No user found with this email address.');
+    }
+
+    const otp_code = Math.floor(100000 + Math.random() * 900000).toString();
+    await User.setOtp(email, otp_code);
+
+    const resetHtml = `
+      <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
+        <div style="background: linear-gradient(135deg, #059669 0%, #10b981 100%); padding: 24px; text-align: center;">
+          <h1 style="color: white; margin: 0; font-size: 28px; font-weight: 700; letter-spacing: 0.5px;">CareSync</h1>
+        </div>
+        <div style="padding: 32px; background-color: #ffffff; color: #374151; font-size: 16px; line-height: 1.6; text-align: center;">
+          <h2 style="margin-top: 0; color: #1f2937; font-size: 20px;">Hello ${user.full_name},</h2>
+          <p>We received a request to reset your password. Your password reset code is:</p>
+          <div style="margin: 30px auto; max-width: max-content; padding: 15px 40px; background-color: #ecfdf5; border: 2px dashed #10b981; border-radius: 8px; letter-spacing: 8px; font-size: 32px; font-weight: 800; color: #059669;">
+            ${otp_code}
+          </div>
+          <p style="margin-bottom: 0; color: #6b7280; font-size: 14px;">If you did not request this, please ignore this email and your password will remain unchanged.</p>
+        </div>
+        <div style="background-color: #f9fafb; padding: 20px; text-align: center; color: #6b7280; font-size: 14px; border-top: 1px solid #f3f4f6;">
+          <p style="margin: 0; padding-bottom: 8px;">CareSync Medical Center</p>
+          <p style="margin: 0; font-size: 12px;">© ${new Date().getFullYear()} All rights reserved.</p>
+        </div>
+      </div>
+    `;
+
+    await sendEmail(
+      email,
+      'CareSync Password Reset Code',
+      `Hello ${user.full_name},\n\nWe received a request to reset your password. Your password reset code is: ${otp_code}\n\nIf you did not request this, please ignore this email.`,
+      resetHtml
+    );
+
+    return { message: 'Password reset code sent to your email.' };
+  }
+
+  static async resetPassword(email, otp, newPassword) {
+    if (!email || !otp || !newPassword) {
+      throw new ApiError(400, 'Please provide email, otp, and new password.');
+    }
+
+    if (newPassword.length < 6) {
+      throw new ApiError(400, 'Password must be at least 6 characters long.');
+    }
+
+    const user = await User.findByEmail(email);
+    if (!user) {
+      throw new ApiError(404, 'User not found.');
+    }
+
+    if (user.otp_code !== otp) {
+      throw new ApiError(400, 'Invalid or expired OTP.');
+    }
+
+    const salt = await bcrypt.genSalt(10);
+    const password_hash = await bcrypt.hash(newPassword, salt);
+
+    await User.updatePassword(user.id, password_hash);
+    
+    // Clear the OTP by verifying (or just clear it, verifyUser does exactly this)
+    await User.verifyUser(email);
+
+    return { message: 'Password reset successfully. You can now login with your new password.' };
   }
 
   static async loginFace(faceDescriptor) {

@@ -22,6 +22,18 @@ class AuthController {
     res.status(200).json(new ApiResponse(200, result, 'OTP verified successfully. Login complete.'));
   });
 
+  static forgotPassword = asyncHandler(async (req, res) => {
+    const { email } = req.body;
+    const result = await AuthService.forgotPassword(email);
+    res.status(200).json(new ApiResponse(200, result, result.message));
+  });
+
+  static resetPassword = asyncHandler(async (req, res) => {
+    const { email, otp, newPassword } = req.body;
+    const result = await AuthService.resetPassword(email, otp, newPassword);
+    res.status(200).json(new ApiResponse(200, result, result.message));
+  });
+
   static loginFace = asyncHandler(async (req, res) => {
     const { faceDescriptor } = req.body;
     const result = await AuthService.loginFace(faceDescriptor);

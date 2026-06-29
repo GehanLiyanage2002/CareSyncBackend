@@ -34,5 +34,6 @@ router.use('/notifications', require('./notificationRoutes'));
 router.use('/receptionist', require('./receptionistRoutes'));
 router.use('/payment', require('./paymentRoutes'));
 router.use('/accessibility', require('./accessibilityRoutes'));
+router.use('/contact-messages', require('./contactMessageRoutes'));
 
 module.exports = router;
