@@ -11,7 +11,7 @@ class AuthService {
   static async registerUser(bodyData, filesData, io) {
     const { sanitizeObject, isValidEmail, isValidMobile } = require('../utils/validators');
     const sanitizedBody = sanitizeObject(bodyData);
-    const { full_name, email, password, role, mobile_number, specialization, experience, bio, faceDescriptor, address, date_of_birth, medical_id } = sanitizedBody;
+    const { full_name, email, password, role, mobile_number, specialization, experience, bio, faceDescriptor, address, date_of_birth, gender, medical_id } = sanitizedBody;
 
     if (!full_name || !email || !password || !role) {
       throw new ApiError(400, 'Please provide full_name, email, password, and role.');
@@ -89,7 +89,8 @@ class AuthService {
       const PatientModel = require('../models/patientModel');
       await PatientModel.upsertProfile(newUser.id, {
         address: address || null,
-        date_of_birth: date_of_birth || null
+        date_of_birth: date_of_birth || null,
+        gender: gender || null
       });
     }
 

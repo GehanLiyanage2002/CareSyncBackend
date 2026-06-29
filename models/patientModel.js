@@ -7,6 +7,7 @@ class PatientModel {
       CREATE TABLE IF NOT EXISTS patient_profiles (
         patient_id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
         date_of_birth TEXT,
+        gender TEXT,
         address TEXT,
         blood_group TEXT,
         allergies TEXT,
@@ -28,6 +29,7 @@ class PatientModel {
   static async upsertProfile(patientId, profileData) {
     const {
       date_of_birth,
+      gender,
       address,
       blood_group,
       allergies,
@@ -38,10 +40,11 @@ class PatientModel {
 
     const queryText = `
       INSERT INTO patient_profiles 
-        (patient_id, date_of_birth, address, blood_group, allergies, chronic_conditions, emergency_contact_name, emergency_contact_number)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        (patient_id, date_of_birth, gender, address, blood_group, allergies, chronic_conditions, emergency_contact_name, emergency_contact_number)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
       ON CONFLICT (patient_id) DO UPDATE SET
         date_of_birth = COALESCE(EXCLUDED.date_of_birth, patient_profiles.date_of_birth),
+        gender = COALESCE(EXCLUDED.gender, patient_profiles.gender),
         address = COALESCE(EXCLUDED.address, patient_profiles.address),
         blood_group = COALESCE(EXCLUDED.blood_group, patient_profiles.blood_group),
         allergies = COALESCE(EXCLUDED.allergies, patient_profiles.allergies),
@@ -54,6 +57,7 @@ class PatientModel {
     const values = [
       patientId,
       date_of_birth ? encrypt(date_of_birth) : null,
+      gender ? encrypt(gender) : null,
       address ? encrypt(address) : null,
       blood_group ? encrypt(blood_group) : null,
       allergies ? encrypt(allergies) : null,
@@ -68,6 +72,7 @@ class PatientModel {
       return {
         ...record,
         date_of_birth: record.date_of_birth ? decrypt(record.date_of_birth) : null,
+        gender: record.gender ? decrypt(record.gender) : null,
         address: record.address ? decrypt(record.address) : null,
         blood_group: record.blood_group ? decrypt(record.blood_group) : null,
         allergies: record.allergies ? decrypt(record.allergies) : null,
