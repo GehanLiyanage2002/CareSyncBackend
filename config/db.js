@@ -10,7 +10,7 @@ const isProduction = process.env.NODE_ENV === 'production';
 const poolConfig = process.env.DATABASE_URL ? {
   connectionString: process.env.DATABASE_URL,
   ssl: { rejectUnauthorized: false },
-  max: 3, // Prevent overloading Prisma's connection limits
+  max: 10, // Prevent overloading Prisma's connection limits
   connectionTimeoutMillis: 15000,
   idleTimeoutMillis: 30000
 } : {
@@ -19,7 +19,7 @@ const poolConfig = process.env.DATABASE_URL ? {
   database: process.env.DB_NAME,
   password: process.env.DB_PASSWORD,
   port: parseInt(process.env.DB_PORT || '5432', 10),
-  max: 3,
+  max: 10,
   connectionTimeoutMillis: 15000,
   idleTimeoutMillis: 30000
 };

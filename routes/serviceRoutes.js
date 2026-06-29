@@ -13,7 +13,7 @@ router.get('/:id/image', ServiceController.getServiceImage);
 router.use(verifyToken);
 
 // Patient routes
-router.post('/book', requireRole(['Patient']), ServiceController.bookService);
+router.post('/book', requireRole(['Patient', 'Receptionist']), ServiceController.bookService);
 
 // Admin routes
 router.post('/', requireRole(['Admin']), ServiceController.createService);

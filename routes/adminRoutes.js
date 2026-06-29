@@ -20,12 +20,14 @@ router.use(adminOnly);
 
 router.get('/stats', AdminController.getStats);
 router.get('/doctors', AdminController.getDoctors);
+router.get('/doctors/:id/id-card/:side', AdminController.getDoctorIdCard);
 router.post('/doctors', AdminController.createDoctor);
 router.put('/doctors/:id/approve', AdminController.toggleDoctorApproval);
 router.put('/doctors/:id/schedule', AdminController.updateDoctorSchedule);
 router.put('/doctors/:id/fee', AdminController.updateDoctorFee);
 router.put('/doctors/:id/profile-image', upload.single('image'), AdminController.updateDoctorProfileImage);
 router.get('/patients', AdminController.getPatients);
+router.get('/patients/:id/appointments', AdminController.getPatientAppointments);
 router.get('/appointments', AdminController.getAppointments);
 router.put('/appointments/:id/cancel', AdminController.cancelAppointment);
 router.get('/earnings', AdminController.getEarnings);

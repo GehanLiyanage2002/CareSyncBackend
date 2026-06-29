@@ -1,7 +1,5 @@
 const express = require('express');
 const router = express.Router();
-const dummyRoutes = require('./dummyRoutes');
-
 const authRoutes = require('./authRoutes');
 const userRoutes = require('./userRoutes');
 const doctorRoutes = require('./doctorRoutes');
@@ -22,7 +20,6 @@ router.get('/health', (req, res) => {
 });
 
 // Mount sub-routers
-router.use('/dummy', dummyRoutes);
 router.use('/auth', authRoutes);
 router.use('/users', userRoutes);
 router.use('/doctor', doctorRoutes);
@@ -34,5 +31,9 @@ router.use('/services', serviceRoutes);
 router.use('/telemedicine', telemedicineRoutes);
 router.use('/chat', require('./chatRoutes'));
 router.use('/notifications', require('./notificationRoutes'));
+router.use('/receptionist', require('./receptionistRoutes'));
+router.use('/payment', require('./paymentRoutes'));
+router.use('/accessibility', require('./accessibilityRoutes'));
+router.use('/contact-messages', require('./contactMessageRoutes'));
 
 module.exports = router;
