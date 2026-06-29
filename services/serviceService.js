@@ -242,7 +242,15 @@ class ServiceService {
       throw new ApiError(404, 'Service not found');
     }
 
-    await db.query('DELETE FROM services WHERE id = $1', [id]);
+    await db.query('BEGIN');
+    try {
+      await db.query('DELETE FROM service_bookings WHERE service_id = $1', [id]);
+      await db.query('DELETE FROM services WHERE id = $1', [id]);
+      await db.query('COMMIT');
+    } catch (error) {
+      await db.query('ROLLBACK');
+      throw error;
+    }
 
     if (io) {
       io.emit('serviceDeleted', { serviceId: id });
