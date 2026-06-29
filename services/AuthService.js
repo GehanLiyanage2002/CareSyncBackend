@@ -93,10 +93,31 @@ class AuthService {
       });
     }
 
+    const verificationHtml = `
+      <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
+        <div style="background: linear-gradient(135deg, #059669 0%, #10b981 100%); padding: 24px; text-align: center;">
+          <h1 style="color: white; margin: 0; font-size: 28px; font-weight: 700; letter-spacing: 0.5px;">CareSync</h1>
+        </div>
+        <div style="padding: 32px; background-color: #ffffff; color: #374151; font-size: 16px; line-height: 1.6; text-align: center;">
+          <h2 style="margin-top: 0; color: #1f2937; font-size: 20px;">Welcome to CareSync!</h2>
+          <p>Your verification code is:</p>
+          <div style="margin: 30px auto; max-width: max-content; padding: 15px 40px; background-color: #ecfdf5; border: 2px dashed #10b981; border-radius: 8px; letter-spacing: 8px; font-size: 32px; font-weight: 800; color: #059669;">
+            ${otp_code}
+          </div>
+          <p style="margin-bottom: 0;">Please enter this code in the app to complete your registration.</p>
+        </div>
+        <div style="background-color: #f9fafb; padding: 20px; text-align: center; color: #6b7280; font-size: 14px; border-top: 1px solid #f3f4f6;">
+          <p style="margin: 0; padding-bottom: 8px;">CareSync Medical Center</p>
+          <p style="margin: 0; font-size: 12px;">© ${new Date().getFullYear()} All rights reserved.</p>
+        </div>
+      </div>
+    `;
+
     await sendEmail(
       email, 
       'CareSync Verification Code', 
-      `Welcome to CareSync!\n\nYour verification code is: ${otp_code}\n\nPlease enter this code to complete your registration.`
+      `Welcome to CareSync!\n\nYour verification code is: ${otp_code}\n\nPlease enter this code to complete your registration.`,
+      verificationHtml
     );
 
     const userResponse = {
@@ -220,10 +241,31 @@ class AuthService {
     const otp_code = Math.floor(100000 + Math.random() * 900000).toString();
     await User.setOtp(email, otp_code);
 
+    const resetHtml = `
+      <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
+        <div style="background: linear-gradient(135deg, #059669 0%, #10b981 100%); padding: 24px; text-align: center;">
+          <h1 style="color: white; margin: 0; font-size: 28px; font-weight: 700; letter-spacing: 0.5px;">CareSync</h1>
+        </div>
+        <div style="padding: 32px; background-color: #ffffff; color: #374151; font-size: 16px; line-height: 1.6; text-align: center;">
+          <h2 style="margin-top: 0; color: #1f2937; font-size: 20px;">Hello ${user.full_name},</h2>
+          <p>We received a request to reset your password. Your password reset code is:</p>
+          <div style="margin: 30px auto; max-width: max-content; padding: 15px 40px; background-color: #ecfdf5; border: 2px dashed #10b981; border-radius: 8px; letter-spacing: 8px; font-size: 32px; font-weight: 800; color: #059669;">
+            ${otp_code}
+          </div>
+          <p style="margin-bottom: 0; color: #6b7280; font-size: 14px;">If you did not request this, please ignore this email and your password will remain unchanged.</p>
+        </div>
+        <div style="background-color: #f9fafb; padding: 20px; text-align: center; color: #6b7280; font-size: 14px; border-top: 1px solid #f3f4f6;">
+          <p style="margin: 0; padding-bottom: 8px;">CareSync Medical Center</p>
+          <p style="margin: 0; font-size: 12px;">© ${new Date().getFullYear()} All rights reserved.</p>
+        </div>
+      </div>
+    `;
+
     await sendEmail(
       email,
       'CareSync Password Reset Code',
-      `Hello ${user.full_name},\n\nWe received a request to reset your password. Your password reset code is: ${otp_code}\n\nIf you did not request this, please ignore this email.`
+      `Hello ${user.full_name},\n\nWe received a request to reset your password. Your password reset code is: ${otp_code}\n\nIf you did not request this, please ignore this email.`,
+      resetHtml
     );
 
     return { message: 'Password reset code sent to your email.' };
