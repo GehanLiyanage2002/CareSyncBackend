@@ -1,4 +1,5 @@
 const DoctorModel = require('../models/doctorModel');
+const PatientModel = require('../models/patientModel');
 const db = require('../config/db');
 const ApiError = require('../utils/ApiError');
 const NotificationService = require('./notificationService');
@@ -12,6 +13,11 @@ class DoctorService {
       profile: profile || {}, 
       user: userInfo || {} 
     };
+  }
+
+  static async getPatientProfile(patientId) {
+    const profile = await PatientModel.getProfileByPatientId(patientId);
+    return { profile: profile || {} };
   }
 
   static async updateProfile(doctorId, bodyData, io) {

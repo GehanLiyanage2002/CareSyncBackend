@@ -4,12 +4,14 @@ const UserService = require('../services/userService');
 
 class UserController {
   static updatePatientProfile = asyncHandler(async (req, res) => {
-    const result = await UserService.updatePatientProfile(req.user.id, req.user.role, req.body);
+    const io = req.app?.get('io');
+    const result = await UserService.updatePatientProfile(req.user.id, req.user.role, req.body, io);
     res.status(200).json(new ApiResponse(200, result, 'Profile updated successfully'));
   });
 
   static updateGeneralProfile = asyncHandler(async (req, res) => {
-    const result = await UserService.updateGeneralProfile(req.user.id, req.body);
+    const io = req.app?.get('io');
+    const result = await UserService.updateGeneralProfile(req.user.id, req.body, io);
     res.status(200).json(new ApiResponse(200, result, 'General profile updated successfully'));
   });
 

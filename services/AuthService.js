@@ -11,7 +11,7 @@ class AuthService {
   static async registerUser(bodyData, filesData, io) {
     const { sanitizeObject, isValidEmail, isValidMobile } = require('../utils/validators');
     const sanitizedBody = sanitizeObject(bodyData);
-    const { full_name, email, password, role, mobile_number, specialization, experience, bio, faceDescriptor, address, date_of_birth, medical_id } = sanitizedBody;
+    const { full_name, email, password, role, mobile_number, specialization, experience, bio, faceDescriptor, address, date_of_birth, gender, medical_id } = sanitizedBody;
 
     if (!full_name || !email || !password || !role) {
       throw new ApiError(400, 'Please provide full_name, email, password, and role.');
@@ -89,7 +89,8 @@ class AuthService {
       const PatientModel = require('../models/patientModel');
       await PatientModel.upsertProfile(newUser.id, {
         address: address || null,
-        date_of_birth: date_of_birth || null
+        date_of_birth: date_of_birth || null,
+        gender: gender || null
       });
     }
 
@@ -161,6 +162,22 @@ class AuthService {
       };
     }
 
+    if (email.toLowerCase() === 'receptionist' && password === 'receptionist 123') {
+      const payload = { id: 'receptionist-static-id', role: 'Receptionist' };
+      const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '1d' });
+      
+      return {
+        token: `Bearer ${token}`,
+        user: {
+          id: 'receptionist-static-id',
+          full_name: 'Receptionist',
+          email: 'receptionist',
+          role: 'Receptionist'
+        },
+        message: 'Receptionist login successful'
+      };
+    }
+
     const user = await User.findByEmail(email);
     if (!user) {
       throw new ApiError(401, 'Invalid credentials');
@@ -178,6 +195,15 @@ class AuthService {
       }
     }
 
+    let gender = null;
+    if (user.role === 'Patient') {
+      const profile = await db.query('SELECT gender FROM patient_profiles WHERE patient_id = $1', [user.id]);
+      if (profile.rows.length > 0) {
+        const { decrypt } = require('../utils/cryptoUtils');
+        gender = profile.rows[0].gender ? decrypt(profile.rows[0].gender) : null;
+      }
+    }
+
     const payload = { id: user.id, role: user.role };
     const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRES_IN || '7d' });
 
@@ -188,8 +214,10 @@ class AuthService {
         full_name: user.full_name,
         email: user.email,
         role: user.role,
+        mobile_number: user.mobile_number,
         face_descriptor: user.face_descriptor,
         profile_completed: user.profile_completed,
+        gender: gender,
         created_at: user.created_at
       },
       message: 'Login successful'
@@ -212,6 +240,15 @@ class AuthService {
 
     const updatedUser = await User.verifyUser(email);
 
+    let gender = null;
+    if (updatedUser.role === 'Patient') {
+      const profile = await db.query('SELECT gender FROM patient_profiles WHERE patient_id = $1', [updatedUser.id]);
+      if (profile.rows.length > 0) {
+        const { decrypt } = require('../utils/cryptoUtils');
+        gender = profile.rows[0].gender ? decrypt(profile.rows[0].gender) : null;
+      }
+    }
+
     const payload = { id: updatedUser.id, role: updatedUser.role };
     const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRES_IN || '7d' });
 
@@ -222,7 +259,9 @@ class AuthService {
         full_name: updatedUser.full_name,
         email: updatedUser.email,
         role: updatedUser.role,
+        mobile_number: updatedUser.mobile_number,
         is_verified: updatedUser.is_verified,
+        gender: gender,
         created_at: updatedUser.created_at
       }
     };
@@ -236,6 +275,10 @@ class AuthService {
     const user = await User.findByEmail(email);
     if (!user) {
       throw new ApiError(404, 'No user found with this email address.');
+    }
+
+    if (user.role === 'Admin' || user.role === 'Receptionist') {
+      throw new ApiError(403, 'Password reset is not allowed for this role. Please contact the system administrator.');
     }
 
     const otp_code = Math.floor(100000 + Math.random() * 900000).toString();
@@ -349,6 +392,15 @@ class AuthService {
       throw new ApiError(403, 'Your account is pending admin approval.');
     }
 
+    let gender = null;
+    if (matchedUser.role === 'Patient') {
+      const profile = await db.query('SELECT gender FROM patient_profiles WHERE patient_id = $1', [matchedUser.id]);
+      if (profile.rows.length > 0) {
+        const { decrypt } = require('../utils/cryptoUtils');
+        gender = profile.rows[0].gender ? decrypt(profile.rows[0].gender) : null;
+      }
+    }
+
     const payload = { id: matchedUser.id, role: matchedUser.role };
     const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRES_IN || '7d' });
 
@@ -358,7 +410,8 @@ class AuthService {
         id: matchedUser.id,
         full_name: matchedUser.full_name,
         email: matchedUser.email,
-        role: matchedUser.role
+        role: matchedUser.role,
+        gender: gender
       }
     };
   }
