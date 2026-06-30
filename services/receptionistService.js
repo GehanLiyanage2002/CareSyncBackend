@@ -206,7 +206,7 @@ class ReceptionistService {
     // Fetch today's appointments for the doctor
     const appointmentsResult = await pool.query(
       `SELECT a.id, a.patient_id, a.patient_name, a.mobile_number, a.appointment_date, 
-              a.start_time, a.status, a.token_number, a.checkin_time, 
+              a.start_time, a.status, a.token_number, a.checkin_time, a.consultation_fee,
               u.full_name as user_name, u.mobile_number as user_phone
        FROM appointments a
        LEFT JOIN users u ON a.patient_id = u.id
@@ -244,7 +244,7 @@ class ReceptionistService {
   static async getActiveQueue(doctorId) {
     const appointmentsResult = await pool.query(
       `SELECT a.id, a.patient_id, a.patient_name, a.mobile_number, a.appointment_date, 
-              a.start_time, a.status, a.token_number, a.checkin_time, 
+              a.start_time, a.status, a.token_number, a.checkin_time, a.consultation_fee,
               u.full_name as user_name, u.mobile_number as user_phone
        FROM appointments a
        LEFT JOIN users u ON a.patient_id = u.id

@@ -112,7 +112,8 @@ class DoctorModel {
         a.mobile_number as appointment_contact,
         u.mobile_number as user_contact,
         a.payment_method,
-        a.is_rescheduled
+        a.is_rescheduled,
+        a.consultation_fee
       FROM appointments a
       LEFT JOIN users u ON a.patient_id = u.id
       WHERE a.doctor_id = $1 
