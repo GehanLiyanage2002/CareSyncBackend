@@ -47,6 +47,10 @@ class UserService {
     if (!updatedUser) {
       throw new ApiError(404, 'User not found.');
     }
+    
+    if (updatedUser.profile_image) {
+      delete updatedUser.profile_image;
+    }
 
     if (io) {
       io.emit('patientUpdated', { id: userId });
