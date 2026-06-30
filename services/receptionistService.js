@@ -2,6 +2,7 @@ const { pool } = require('../config/db');
 const bcrypt = require('bcryptjs');
 const { decrypt } = require('../utils/cryptoUtils');
 const ApiError = require('../utils/ApiError');
+const PatientModel = require('../models/patientModel');
 
 class ReceptionistService {
   static async registerWalkInPatient(bodyData, io) {
@@ -9,6 +10,8 @@ class ReceptionistService {
       name,
       email,
       phone,
+      date_of_birth,
+      gender,
       blood_group,
       emergency_contact_name,
       emergency_contact_number
@@ -47,6 +50,15 @@ class ReceptionistService {
       const updatedPatient = updateResult.rows[0];
       delete updatedPatient.password_hash;
 
+      // Update or create patient_profile for this patient
+      await PatientModel.upsertProfile(updatedPatient.id, {
+        date_of_birth,
+        gender,
+        blood_group,
+        emergency_contact_name,
+        emergency_contact_number
+      });
+
       // Emit socket event for real-time update
       if (io) {
         io.emit('patientUpdated', updatedPatient);
@@ -76,6 +88,15 @@ class ReceptionistService {
 
     // Remove sensitive data before sending response
     delete newPatient.password_hash;
+
+    // Update or create patient_profile for this new patient
+    await PatientModel.upsertProfile(newPatient.id, {
+      date_of_birth,
+      gender,
+      blood_group,
+      emergency_contact_name,
+      emergency_contact_number
+    });
 
     // Emit socket event for real-time update
     if (io) {

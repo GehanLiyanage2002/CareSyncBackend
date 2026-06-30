@@ -175,7 +175,7 @@ class User {
       UPDATE users
       SET is_verified = TRUE, otp_code = NULL
       WHERE email = $1
-      RETURNING id, full_name, email, role, is_verified, created_at;
+      RETURNING *;
     `;
     try {
       const result = await db.query(queryText, [email]);
@@ -202,7 +202,7 @@ class User {
       UPDATE users 
       SET full_name = $1, mobile_number = $2
       WHERE id = $3
-      RETURNING id, full_name, email, role, mobile_number, created_at;
+      RETURNING *;
     `;
     const values = [full_name, encrypt(mobile_number), id];
 
