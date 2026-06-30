@@ -18,7 +18,32 @@ class DoctorModel {
   }
 
   static async upsertProfile(doctorId, profileData) {
-    const { medical_id, specialization, experience, bio, location, qualifications, id_card_front, id_card_front_mimetype, id_card_rear, id_card_rear_mimetype } = profileData;
+    // Fetch existing profile to preserve data not passed in profileData
+    const existingResult = await db.query('SELECT * FROM doctor_profiles WHERE doctor_id = $1', [doctorId]);
+    const existing = existingResult.rows[0] || {};
+    
+    // Decrypt existing values to merge properly
+    const currentMedicalId = existing.medical_id ? decrypt(existing.medical_id) : '';
+    const currentSpecialization = existing.specialization ? decrypt(existing.specialization) : '';
+    const currentExperience = existing.experience ? decrypt(existing.experience) : '';
+    const currentBio = existing.bio ? decrypt(existing.bio) : '';
+    const currentQualifications = existing.qualifications ? decrypt(existing.qualifications) : '';
+
+    const mergedData = {
+      medical_id: profileData.medical_id !== undefined ? profileData.medical_id : currentMedicalId,
+      specialization: profileData.specialization !== undefined ? profileData.specialization : currentSpecialization,
+      experience: profileData.experience !== undefined ? profileData.experience : currentExperience,
+      bio: profileData.bio !== undefined ? profileData.bio : currentBio,
+      location: profileData.location !== undefined ? profileData.location : (existing.location || ''),
+      qualifications: profileData.qualifications !== undefined ? profileData.qualifications : currentQualifications,
+      id_card_front: profileData.id_card_front !== undefined ? profileData.id_card_front : existing.id_card_front,
+      id_card_front_mimetype: profileData.id_card_front_mimetype !== undefined ? profileData.id_card_front_mimetype : existing.id_card_front_mimetype,
+      id_card_rear: profileData.id_card_rear !== undefined ? profileData.id_card_rear : existing.id_card_rear,
+      id_card_rear_mimetype: profileData.id_card_rear_mimetype !== undefined ? profileData.id_card_rear_mimetype : existing.id_card_rear_mimetype
+    };
+
+    const { medical_id, specialization, experience, bio, location, qualifications, id_card_front, id_card_front_mimetype, id_card_rear, id_card_rear_mimetype } = mergedData;
+    
     const query = `
       INSERT INTO doctor_profiles (doctor_id, medical_id, specialization, experience, bio, location, qualifications, id_card_front, id_card_front_mimetype, id_card_rear, id_card_rear_mimetype, updated_at)
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, CURRENT_TIMESTAMP)
@@ -30,19 +55,19 @@ class DoctorModel {
         bio = EXCLUDED.bio,
         location = EXCLUDED.location,
         qualifications = EXCLUDED.qualifications,
-        id_card_front = COALESCE(EXCLUDED.id_card_front, doctor_profiles.id_card_front),
-        id_card_front_mimetype = COALESCE(EXCLUDED.id_card_front_mimetype, doctor_profiles.id_card_front_mimetype),
-        id_card_rear = COALESCE(EXCLUDED.id_card_rear, doctor_profiles.id_card_rear),
-        id_card_rear_mimetype = COALESCE(EXCLUDED.id_card_rear_mimetype, doctor_profiles.id_card_rear_mimetype),
+        id_card_front = EXCLUDED.id_card_front,
+        id_card_front_mimetype = EXCLUDED.id_card_front_mimetype,
+        id_card_rear = EXCLUDED.id_card_rear,
+        id_card_rear_mimetype = EXCLUDED.id_card_rear_mimetype,
         updated_at = CURRENT_TIMESTAMP
       RETURNING *;
     `;
     const result = await db.query(query, [
       doctorId, 
       encrypt(medical_id || ''),
-      encrypt(specialization), 
-      encrypt(experience), 
-      encrypt(bio), 
+      encrypt(specialization || ''), 
+      encrypt(experience || ''), 
+      encrypt(bio || ''), 
       location || '', 
       encrypt(qualifications || ''),
       id_card_front || null,

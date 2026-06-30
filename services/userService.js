@@ -112,6 +112,8 @@ class UserService {
       });
     }
 
+    UserService.clearDoctorsCache();
+
     return { profile: updatedProfile };
   }
 
