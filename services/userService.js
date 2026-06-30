@@ -135,6 +135,11 @@ class UserService {
     timestamp: {}
   };
 
+  static clearDoctorsCache() {
+    UserService._doctorsCache.data = {};
+    UserService._doctorsCache.timestamp = {};
+  }
+
   static async getAvailableDoctors(date) {
     const cacheKey = date || 'all';
     const cacheExpiryMs = 5 * 60 * 1000; // 5 minutes cache
@@ -144,11 +149,14 @@ class UserService {
       UserService._doctorsCache.data[cacheKey] && 
       (Date.now() - UserService._doctorsCache.timestamp[cacheKey]) < cacheExpiryMs
     ) {
+      console.log(`[UserService] Cache HIT for key: ${cacheKey}`);
       return {
         doctors: UserService._doctorsCache.data[cacheKey],
         cached: true
       };
     }
+    
+    console.log(`[UserService] Cache MISS for key: ${cacheKey}. Fetching from DB...`);
 
     let query = `
       SELECT 
