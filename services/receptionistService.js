@@ -153,7 +153,13 @@ class ReceptionistService {
        ORDER BY a.doctor_id, a.start_time ASC`
     );
 
-    const appointments = appointmentsResult.rows;
+    const appointments = appointmentsResult.rows.map(app => {
+      let phone = app.user_phone;
+      if (phone) {
+        try { phone = decrypt(phone); } catch (e) {}
+      }
+      return { ...app, user_phone: phone };
+    });
 
     // Group by doctor
     const groupedData = {};
@@ -210,7 +216,13 @@ class ReceptionistService {
       [doctorId]
     );
 
-    const appointments = appointmentsResult.rows;
+    const appointments = appointmentsResult.rows.map(app => {
+      let phone = app.user_phone;
+      if (phone) {
+        try { phone = decrypt(phone); } catch (e) {}
+      }
+      return { ...app, user_phone: phone };
+    });
 
     // Split into upcoming and activeQueue
     const upcoming = appointments.filter(app => app.status === 'In Progress');
@@ -243,7 +255,13 @@ class ReceptionistService {
       [doctorId]
     );
 
-    return appointmentsResult.rows;
+    return appointmentsResult.rows.map(app => {
+      let phone = app.user_phone;
+      if (phone) {
+        try { phone = decrypt(phone); } catch (e) {}
+      }
+      return { ...app, user_phone: phone };
+    });
   }
 
   static async checkInPatient(appointmentId, io) {

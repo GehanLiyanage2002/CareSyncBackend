@@ -109,7 +109,8 @@ class DoctorModel {
         COALESCE(u.full_name, a.patient_name) as patient_name,
         a.age as patient_age,
         a.gender as patient_gender,
-        a.mobile_number as patient_contact,
+        a.mobile_number as appointment_contact,
+        u.mobile_number as user_contact,
         a.payment_method,
         a.is_rescheduled
       FROM appointments a
@@ -118,7 +119,21 @@ class DoctorModel {
       ORDER BY a.appointment_date ASC, a.start_time ASC
     `;
     const result = await db.query(query, [doctorId]);
-    return result.rows.map(row => ({ ...row, status: row.status.toLowerCase() }));
+    return result.rows.map(row => {
+      let finalContact = row.appointment_contact;
+      if (row.user_contact) {
+        try {
+          finalContact = decrypt(row.user_contact);
+        } catch (e) {
+          finalContact = row.user_contact;
+        }
+      }
+      return { 
+        ...row, 
+        patient_contact: finalContact,
+        status: row.status.toLowerCase() 
+      };
+    });
   }
 
   static async updateAppointmentStatus(appointmentId, doctorId, status) {
