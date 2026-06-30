@@ -29,6 +29,7 @@ class AppointmentService {
         u.full_name AS doctor_name,
         dp.specialization AS doctor_specialization,
         a.doctor_id,
+        a.consultation_fee,
         CASE WHEN r.id IS NOT NULL THEN true ELSE false END AS has_review
       FROM appointments a
       JOIN users u ON a.doctor_id = u.id
@@ -159,8 +160,10 @@ class AppointmentService {
       throw new ApiError(400, 'This slot is already booked. Please choose another.');
     }
 
-    const docProfile = await db.query('SELECT specialization FROM doctor_profiles WHERE doctor_id = $1', [doctor_id]);
-    const spec = docProfile.rows[0]?.specialization ? decrypt(docProfile.rows[0].specialization).toLowerCase() : '';
+    const docProfile = await db.query('SELECT specialization, consultation_fee FROM doctor_profiles WHERE doctor_id = $1', [doctor_id]);
+    const profileRow = docProfile.rows[0];
+    const spec = profileRow?.specialization ? decrypt(profileRow.specialization).toLowerCase() : '';
+    const currentFee = profileRow?.consultation_fee || null;
     
     const isPsychology = spec.includes('psychology') || spec.includes('psychiatry');
     
@@ -179,11 +182,11 @@ class AppointmentService {
     const result = await db.query(
       `INSERT INTO appointments (
         patient_id, doctor_id, appointment_date, start_time, status, 
-        patient_name, age, mobile_number, gender, email, payment_method, token_number, is_telemedicine
-      ) VALUES ($1, $2, $3, $4, 'Pending', $5, $6, $7, $8, $9, $10, $11, $12) RETURNING *`,
+        patient_name, age, mobile_number, gender, email, payment_method, token_number, is_telemedicine, consultation_fee
+      ) VALUES ($1, $2, $3, $4, 'Pending', $5, $6, $7, $8, $9, $10, $11, $12, $13) RETURNING *`,
       [
         patientId, doctor_id, appointment_date, start_time, 
-        patient_name, age, mobile_number, gender, email, payment_method, tokenNumber, is_telemedicine || false
+        patient_name, age, mobile_number, gender, email, payment_method, tokenNumber, is_telemedicine || false, currentFee
       ]
     );
 

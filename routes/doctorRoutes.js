@@ -15,6 +15,9 @@ router.put('/fee', DoctorController.updateFee);
 router.get('/appointments', DoctorController.getAppointments);
 router.put('/appointments/:id/status', DoctorController.updateAppointmentStatus);
 
+// Patient routes
+router.get('/patient/:id/profile', DoctorController.getPatientProfile);
+
 // Schedule routes
 router.get('/schedule', DoctorController.getSchedule);
 router.post('/schedule', DoctorController.updateSchedule);

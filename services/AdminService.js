@@ -29,9 +29,9 @@ class AdminService {
     const canceledCount = await db.query(`SELECT COUNT(*) FROM appointments WHERE status = 'Cancelled' ${dateFilterAppts}`, params);
     
     const revenueQuery = `
-      SELECT COALESCE(SUM(dp.consultation_fee), 0) as total_earnings
+      SELECT COALESCE(SUM(a.consultation_fee), 0) as total_earnings
       FROM appointments a
-      JOIN doctor_profiles dp ON a.doctor_id = dp.doctor_id
+      LEFT JOIN doctor_profiles dp ON a.doctor_id = dp.doctor_id
       WHERE a.status = 'Completed' ${dateFilterAppts}
     `;
     const revenueResult = await db.query(revenueQuery, params);
@@ -154,7 +154,7 @@ class AdminService {
         p.full_name as patient_name,
         d.full_name as doctor_name,
         dp.specialization as doctor_specialization,
-        dp.consultation_fee as fees
+        COALESCE(a.consultation_fee, dp.consultation_fee) as fees
       FROM appointments a
       JOIN users p ON a.patient_id = p.id
       JOIN users d ON a.doctor_id = d.id

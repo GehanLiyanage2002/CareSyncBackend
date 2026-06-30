@@ -1,0 +1,1 @@
+require('dotenv').config(); const db = require('./config/db'); db.query('SELECT email, mobile_number FROM users').then(r => console.log(r.rows.find(x => x.email === \pubudugunawarsana@gmail.com\))).catch(console.error).finally(()=>process.exit())

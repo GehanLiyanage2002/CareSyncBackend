@@ -99,25 +99,42 @@ class DoctorModel {
   static async getAppointmentsByDoctorId(doctorId) {
     const query = `
       SELECT 
-        id, 
-        patient_id,
-        token_number,
-        appointment_date, 
-        start_time, 
-        status,
-        is_telemedicine,
-        patient_name,
-        age as patient_age,
-        gender as patient_gender,
-        mobile_number as patient_contact,
-        payment_method,
-        is_rescheduled
-      FROM appointments 
-      WHERE doctor_id = $1 
-      ORDER BY appointment_date ASC, start_time ASC
+        a.id, 
+        a.patient_id,
+        a.token_number,
+        a.appointment_date, 
+        a.start_time, 
+        a.status,
+        a.is_telemedicine,
+        COALESCE(u.full_name, a.patient_name) as patient_name,
+        a.age as patient_age,
+        a.gender as patient_gender,
+        a.mobile_number as appointment_contact,
+        u.mobile_number as user_contact,
+        a.payment_method,
+        a.is_rescheduled,
+        a.consultation_fee
+      FROM appointments a
+      LEFT JOIN users u ON a.patient_id = u.id
+      WHERE a.doctor_id = $1 
+      ORDER BY a.appointment_date ASC, a.start_time ASC
     `;
     const result = await db.query(query, [doctorId]);
-    return result.rows.map(row => ({ ...row, status: row.status.toLowerCase() }));
+    return result.rows.map(row => {
+      let finalContact = row.appointment_contact;
+      if (row.user_contact) {
+        try {
+          finalContact = decrypt(row.user_contact);
+        } catch (e) {
+          finalContact = row.user_contact;
+        }
+      }
+      return { 
+        ...row, 
+        patient_contact: finalContact,
+        status: row.status.toLowerCase() 
+      };
+    });
   }
 
   static async updateAppointmentStatus(appointmentId, doctorId, status) {

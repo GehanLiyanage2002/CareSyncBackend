@@ -153,7 +153,13 @@ class ReceptionistService {
        ORDER BY a.doctor_id, a.start_time ASC`
     );
 
-    const appointments = appointmentsResult.rows;
+    const appointments = appointmentsResult.rows.map(app => {
+      let phone = app.user_phone;
+      if (phone) {
+        try { phone = decrypt(phone); } catch (e) {}
+      }
+      return { ...app, user_phone: phone };
+    });
 
     // Group by doctor
     const groupedData = {};
@@ -200,7 +206,7 @@ class ReceptionistService {
     // Fetch today's appointments for the doctor
     const appointmentsResult = await pool.query(
       `SELECT a.id, a.patient_id, a.patient_name, a.mobile_number, a.appointment_date, 
-              a.start_time, a.status, a.token_number, a.checkin_time, 
+              a.start_time, a.status, a.token_number, a.checkin_time, a.consultation_fee,
               u.full_name as user_name, u.mobile_number as user_phone
        FROM appointments a
        LEFT JOIN users u ON a.patient_id = u.id
@@ -210,7 +216,13 @@ class ReceptionistService {
       [doctorId]
     );
 
-    const appointments = appointmentsResult.rows;
+    const appointments = appointmentsResult.rows.map(app => {
+      let phone = app.user_phone;
+      if (phone) {
+        try { phone = decrypt(phone); } catch (e) {}
+      }
+      return { ...app, user_phone: phone };
+    });
 
     // Split into upcoming and activeQueue
     const upcoming = appointments.filter(app => app.status === 'In Progress');
@@ -232,7 +244,7 @@ class ReceptionistService {
   static async getActiveQueue(doctorId) {
     const appointmentsResult = await pool.query(
       `SELECT a.id, a.patient_id, a.patient_name, a.mobile_number, a.appointment_date, 
-              a.start_time, a.status, a.token_number, a.checkin_time, 
+              a.start_time, a.status, a.token_number, a.checkin_time, a.consultation_fee,
               u.full_name as user_name, u.mobile_number as user_phone
        FROM appointments a
        LEFT JOIN users u ON a.patient_id = u.id
@@ -243,7 +255,13 @@ class ReceptionistService {
       [doctorId]
     );
 
-    return appointmentsResult.rows;
+    return appointmentsResult.rows.map(app => {
+      let phone = app.user_phone;
+      if (phone) {
+        try { phone = decrypt(phone); } catch (e) {}
+      }
+      return { ...app, user_phone: phone };
+    });
   }
 
   static async checkInPatient(appointmentId, io) {
