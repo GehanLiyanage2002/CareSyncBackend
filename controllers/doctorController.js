@@ -24,6 +24,11 @@ exports.getAppointments = asyncHandler(async (req, res) => {
   res.status(200).json(new ApiResponse(200, result));
 });
 
+exports.getPatientProfile = asyncHandler(async (req, res) => {
+  const result = await DoctorService.getPatientProfile(req.params.id);
+  res.status(200).json(new ApiResponse(200, result));
+});
+
 exports.updateAppointmentStatus = asyncHandler(async (req, res) => {
   const io = req.app.get('io');
   const result = await DoctorService.updateAppointmentStatus(req.params.id, req.user.id, req.body.status, io);
