@@ -6,7 +6,7 @@ const { encrypt, decrypt } = require('../utils/cryptoUtils');
 const ApiError = require('../utils/ApiError');
 
 class UserService {
-  static async updatePatientProfile(userId, userRole, bodyData) {
+  static async updatePatientProfile(userId, userRole, bodyData, io) {
     const { blood_group, allergies, chronic_conditions, emergency_contact_name, emergency_contact_number, address, date_of_birth } = bodyData;
 
     if (userRole !== 'Patient') {
@@ -28,10 +28,14 @@ class UserService {
       throw new ApiError(404, 'User not found or not a patient.');
     }
 
+    if (io) {
+      io.emit('patientUpdated', { id: userId });
+    }
+
     return { user: updatedUser };
   }
 
-  static async updateGeneralProfile(userId, bodyData) {
+  static async updateGeneralProfile(userId, bodyData, io) {
     const { full_name, mobile_number } = bodyData;
 
     if (!full_name) {
@@ -42,6 +46,10 @@ class UserService {
     
     if (!updatedUser) {
       throw new ApiError(404, 'User not found.');
+    }
+
+    if (io) {
+      io.emit('patientUpdated', { id: userId });
     }
 
     return { user: updatedUser };
