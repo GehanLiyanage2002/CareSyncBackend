@@ -47,6 +47,10 @@ class UserService {
     if (!updatedUser) {
       throw new ApiError(404, 'User not found.');
     }
+    
+    if (updatedUser.profile_image) {
+      delete updatedUser.profile_image;
+    }
 
     if (io) {
       io.emit('patientUpdated', { id: userId });
@@ -169,7 +173,7 @@ class UserService {
         dp.bio as about,
         dp.is_available,
         '95%' as "successRate", 
-        '1k+' as patients, 
+        (SELECT COUNT(DISTINCT patient_id)::int FROM appointments WHERE doctor_id = u.id AND status::text != 'Cancelled') as patients, 
         COALESCE(dp.qualifications, '') as qualifications,
         COALESCE(dp.location, 'Not specified') as location,
         COALESCE(dp.consultation_fee, 1500) as "consultationFee",

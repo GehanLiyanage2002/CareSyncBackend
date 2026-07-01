@@ -3,6 +3,7 @@ const db = require('../config/db');
 const { decrypt } = require('../utils/cryptoUtils');
 const ApiError = require('../utils/ApiError');
 const NotificationService = require('../services/notificationService');
+const UserService = require('../services/userService');
 
 class AppointmentService {
   static async toggleAvailability(doctorId, io) {
@@ -193,6 +194,15 @@ class AppointmentService {
     if (io) {
       io.emit('slotBooked', { doctor_id, date: appointment_date, start_time });
       
+      const patientsResult = await db.query(
+        "SELECT COUNT(DISTINCT patient_id)::int as count FROM appointments WHERE doctor_id = $1 AND status::text != 'Cancelled'",
+        [doctor_id]
+      );
+      const newPatientCount = patientsResult.rows[0].count;
+
+      UserService.clearDoctorsCache();
+      io.emit('doctorPatientsUpdated', { doctor_id, patients: newPatientCount });
+
       await NotificationService.sendNotification(
         io,
         doctor_id,
