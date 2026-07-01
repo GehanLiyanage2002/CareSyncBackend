@@ -87,10 +87,11 @@ class ReviewService {
 
   static async getRecentPublicReviews() {
     const result = await db.query(
-      `SELECT r.id, r.rating, r.comment, r.patient_name, r.patient_id, r.created_at,
+      `SELECT r.id, r.rating, r.comment, COALESCE(p.full_name, r.patient_name) AS patient_name, r.patient_id, r.created_at,
               r.doctor_id, u.full_name AS doctor_name
        FROM reviews r
        JOIN users u ON r.doctor_id = u.id
+       LEFT JOIN users p ON r.patient_id = p.id
        WHERE r.comment IS NOT NULL AND r.comment != ''
        ORDER BY r.rating DESC, r.created_at DESC
        LIMIT 9`
