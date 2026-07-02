@@ -1,9 +1,9 @@
 const express = require('express');
 const router = express.Router();
 const accessibilityController = require('../controllers/accessibilityController');
-const { verifyToken } = require('../middlewares/authMiddleware');
+const { verifyToken, requireRole } = require('../middlewares/authMiddleware');
 
-router.get('/', verifyToken, accessibilityController.getSettings);
-router.put('/', verifyToken, accessibilityController.updateSettings);
+router.get('/', verifyToken, requireRole(['Patient']), accessibilityController.getSettings);
+router.put('/', verifyToken, requireRole(['Patient']), accessibilityController.updateSettings);
 
 module.exports = router;
