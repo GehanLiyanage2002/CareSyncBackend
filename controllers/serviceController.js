@@ -40,8 +40,14 @@ class ServiceController {
   });
 
   static bookService = asyncHandler(async (req, res) => {
-    const result = await ServiceService.bookService(req.user.role, req.user.id, req.body);
+    const io = req.app?.get('io');
+    const result = await ServiceService.bookService(req.user.role, req.user.id, req.body, io);
     res.status(201).json(new ApiResponse(201, result, 'Service booked successfully'));
+  });
+
+  static getBookedSlots = asyncHandler(async (req, res) => {
+    const result = await ServiceService.getBookedSlots(req.params.id, req.query.date);
+    res.status(200).json(new ApiResponse(200, result));
   });
 
   static getMyBookings = asyncHandler(async (req, res) => {
