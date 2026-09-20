@@ -22,6 +22,9 @@ const server = app.listen(PORT, async () => {
   const ContactMessage = require('./models/contactMessageModel');
   await ContactMessage.setupContactMessagesTable();
 
+  // Initialize recurring background tasks
+  require('./cron/knowledgeSyncCron');
+
   console.log('=============================================');
   console.log(`CareSync Backend Server Started Successfully`);
   console.log(`Port:        ${PORT}`);
