@@ -96,7 +96,101 @@ class ServiceService {
     return result.rows[0];
   }
 
-  static async bookService(userRole, userId, bodyData) {
+  static generateAvailableDates(schedules) {
+    if (!schedules || !Array.isArray(schedules) || schedules.length === 0) return [];
+
+    const dayNameToIndex = {
+      sunday: 0,
+      monday: 1,
+      tuesday: 2,
+      wednesday: 3,
+      thursday: 4,
+      friday: 5,
+      saturday: 6
+    };
+
+    const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+    const datesMap = new Map();
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    // 1. Specific date schedules
+    schedules.forEach(sch => {
+      if (sch.schedule_date) {
+        const parts = sch.schedule_date.split('-');
+        if (parts.length === 3) {
+          const year = parseInt(parts[0], 10);
+          const month = parseInt(parts[1], 10) - 1;
+          const day = parseInt(parts[2], 10);
+          const d = new Date(year, month, day);
+          if (d >= today) {
+            const dateKey = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+            datesMap.set(dateKey, {
+              ...sch,
+              schedule_date: dateKey,
+              dayName: daysOfWeek[d.getDay()],
+              dayNum: d.getDate(),
+              month: months[d.getMonth()],
+              year: d.getFullYear(),
+              formattedDate: `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`,
+              timestamp: d.getTime()
+            });
+          }
+        }
+      }
+    });
+
+    // 2. Weekday recurring schedules (generate next 28 days)
+    const weekdaySchedules = schedules.filter(sch => sch.day_of_week && dayNameToIndex[sch.day_of_week.toLowerCase()] !== undefined);
+    if (weekdaySchedules.length > 0) {
+      for (let i = 0; i < 28; i++) {
+        const targetDate = new Date(today);
+        targetDate.setDate(today.getDate() + i);
+        const targetDayIndex = targetDate.getDay();
+
+        const year = targetDate.getFullYear();
+        const month = targetDate.getMonth();
+        const day = targetDate.getDate();
+        const dateKey = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+
+        const matchingSchedule = weekdaySchedules.find(
+          sch => dayNameToIndex[sch.day_of_week.toLowerCase()] === targetDayIndex
+        );
+
+        if (matchingSchedule && !datesMap.has(dateKey)) {
+          datesMap.set(dateKey, {
+            ...matchingSchedule,
+            schedule_date: dateKey,
+            dayName: daysOfWeek[targetDayIndex],
+            dayNum: day,
+            month: months[month],
+            year: year,
+            formattedDate: `${day} ${months[month]} ${year}`,
+            timestamp: targetDate.getTime()
+          });
+        }
+      }
+    }
+
+    return Array.from(datesMap.values()).sort((a, b) => a.timestamp - b.timestamp);
+  }
+
+  static async getBookedSlots(serviceId, date) {
+    if (!serviceId || !date) {
+      return { booked_slots: [] };
+    }
+    const query = `
+      SELECT TO_CHAR(appointment_time, 'HH24:MI') as time 
+      FROM service_bookings 
+      WHERE service_id = $1 AND appointment_date = $2 AND status != 'Cancelled'
+    `;
+    const result = await db.query(query, [serviceId, date]);
+    return { booked_slots: result.rows.map(r => r.time) };
+  }
+
+  static async bookService(userRole, userId, bodyData, io) {
     let patientId;
     if (userRole === 'Receptionist') {
       patientId = bodyData.patient_id;
@@ -109,13 +203,18 @@ class ServiceService {
     
     const { service_id, date, time, amount_paid } = bodyData;
 
-    if (!service_id || !date || !time || !amount_paid) {
+    if (!service_id || !date || !time || amount_paid === undefined || amount_paid === null || amount_paid === '') {
       throw new ApiError(400, 'Please provide service_id, date, time, and amount_paid');
     }
 
+    const parsedServiceId = parseInt(service_id, 10);
+    if (isNaN(parsedServiceId)) {
+      throw new ApiError(400, 'Invalid service ID');
+    }
+
     const checkService = await db.query(
-      'SELECT is_available, name FROM services WHERE id = $1',
-      [service_id]
+      'SELECT is_available, name, price FROM services WHERE id = $1',
+      [parsedServiceId]
     );
     
     if (checkService.rows.length === 0) {
@@ -126,37 +225,81 @@ class ServiceService {
       throw new ApiError(400, 'This service is currently unavailable');
     }
 
+    // Check if slot is already booked
+    const existingBooking = await db.query(
+      `SELECT id FROM service_bookings 
+       WHERE service_id = $1 
+         AND appointment_date = $2 
+         AND appointment_time = $3 
+         AND status != 'Cancelled'`,
+      [parsedServiceId, date, time]
+    );
+
+    if (existingBooking.rows.length > 0) {
+      throw new ApiError(400, 'This time slot is already booked. Please choose another slot.');
+    }
+
     const query = `
       INSERT INTO service_bookings (patient_id, service_id, appointment_date, appointment_time, amount_paid, status)
       VALUES ($1, $2, $3, $4, $5, 'In Progress')
-      RETURNING id
+      RETURNING id, patient_id, service_id, TO_CHAR(appointment_date, 'YYYY-MM-DD') AS appointment_date, TO_CHAR(appointment_time, 'HH24:MI') AS appointment_time, amount_paid, status
     `;
     const result = await db.query(query, [
       patientId,
-      service_id,
+      parsedServiceId,
       date,
       time,
       Number(amount_paid)
     ]);
 
-    return { booking: { id: result.rows[0].id } };
+    const booking = result.rows[0];
+
+    // Real-time notifications and socket broadcast
+    if (patientId) {
+      try {
+        const NotificationService = require('./notificationService');
+        await NotificationService.sendNotification(
+          io,
+          patientId,
+          'Medical Service Booked',
+          `Your booking for ${checkService.rows[0].name} on ${date} at ${time} has been confirmed.`,
+          'success'
+        );
+      } catch (notifErr) {
+        console.error('Failed to send service booking notification:', notifErr.message);
+      }
+    }
+
+    if (io) {
+      io.emit('serviceBooked', {
+        id: booking.id,
+        service_id: parsedServiceId,
+        service_name: checkService.rows[0].name,
+        patient_id: patientId,
+        date,
+        time
+      });
+    }
+
+    return { booking };
   }
 
   static async getMyBookings(userRole, userId) {
     let query;
     let params = [];
 
-    if (userRole === 'Admin') {
+    if (userRole === 'Admin' || userRole === 'Receptionist') {
       query = `
         SELECT sb.id, s.name AS "serviceName", 
                TO_CHAR(sb.appointment_date, 'YYYY-MM-DD') AS date, 
                TO_CHAR(sb.appointment_time, 'HH24:MI') AS time, 
                sb.amount_paid AS price,
                sb.status,
-               u.full_name AS "patientName"
+               COALESCE(u.full_name, 'Walk-in Patient') AS "patientName",
+               u.mobile_number AS "patientPhone"
         FROM service_bookings sb
         JOIN services s ON sb.service_id = s.id
-        JOIN users u ON sb.patient_id = u.id
+        LEFT JOIN users u ON sb.patient_id = u.id
         ORDER BY sb.appointment_date DESC, sb.appointment_time DESC
       `;
     } else {
@@ -183,13 +326,17 @@ class ServiceService {
       SELECT id, service_id, TO_CHAR(schedule_date, 'YYYY-MM-DD') AS schedule_date,
              day_of_week,
              TO_CHAR(start_time, 'HH24:MI') AS start_time,
-             TO_CHAR(end_time, 'HH24:MI') AS end_time
+             TO_CHAR(end_time, 'HH24:MI') AS end_time,
+             COALESCE(slot_duration_minutes, 30) AS slot_duration_minutes
       FROM service_schedules
       WHERE service_id = $1
       ORDER BY schedule_date ASC, day_of_week ASC, start_time ASC
     `;
     const result = await db.query(query, [id]);
-    return { schedules: result.rows };
+    const schedules = result.rows;
+    const available_dates = ServiceService.generateAvailableDates(schedules);
+
+    return { schedules, available_dates };
   }
 
   static async addServiceSchedule(id, bodyData) {

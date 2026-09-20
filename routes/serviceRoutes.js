@@ -8,6 +8,8 @@ const upload = require('../middlewares/uploadMiddleware');
 // Public routes
 router.get('/', ServiceController.getAllServices);
 router.get('/:id/image', ServiceController.getServiceImage);
+router.get('/:id/schedules', ServiceController.getServiceSchedules);
+router.get('/:id/booked-slots', ServiceController.getBookedSlots);
 
 // All following endpoints require authentication
 router.use(verifyToken);
@@ -25,6 +27,5 @@ router.delete('/schedules/:scheduleId', requireRole(['Admin']), ServiceControlle
 
 // General authenticated routes (available to both Patients and Admins)
 router.get('/bookings', ServiceController.getMyBookings);
-router.get('/:id/schedules', ServiceController.getServiceSchedules);
 
 module.exports = router;
