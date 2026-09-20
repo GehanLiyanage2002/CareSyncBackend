@@ -27,5 +27,6 @@ router.delete('/schedules/:scheduleId', requireRole(['Admin']), ServiceControlle
 
 // General authenticated routes (available to both Patients and Admins)
 router.get('/bookings', ServiceController.getMyBookings);
+router.put('/bookings/:id/status', requireRole(['Admin', 'Receptionist']), ServiceController.updateBookingStatus);
 
 module.exports = router;
