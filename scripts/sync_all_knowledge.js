@@ -90,12 +90,16 @@ async function syncAllKnowledge() {
     }
     
     console.log("\n✅ All static and dynamic knowledge synced successfully!");
-    process.exit(0);
-
+    // process.exit(0);
   } catch (err) {
     console.error("❌ Error syncing knowledge:", err);
-    process.exit(1);
+    // process.exit(1);
+    throw err;
   }
 }
 
-syncAllKnowledge();
+if (require.main === module) {
+  syncAllKnowledge().then(() => process.exit(0)).catch(() => process.exit(1));
+}
+
+module.exports = { syncAllKnowledge };
