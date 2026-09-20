@@ -75,6 +75,12 @@ class ServiceController {
     const result = await ServiceService.deleteService(req.params.id, io);
     res.status(200).json(new ApiResponse(200, result, 'Service removed completely.'));
   });
+
+  static updateBookingStatus = asyncHandler(async (req, res) => {
+    const io = req.app?.get('io');
+    const result = await ServiceService.updateBookingStatus(req.params.id, req.body.status, io);
+    res.status(200).json(new ApiResponse(200, result, 'Booking status updated successfully'));
+  });
 }
 
 module.exports = ServiceController;
