@@ -405,6 +405,30 @@ class ServiceService {
 
     return {};
   }
+
+  static async updateBookingStatus(bookingId, status, io) {
+    if (!status || !['In Progress', 'Completed', 'Cancelled'].includes(status)) {
+      throw new ApiError(400, 'Invalid status');
+    }
+
+    const query = `
+      UPDATE service_bookings
+      SET status = $1
+      WHERE id = $2
+      RETURNING id, patient_id, service_id, status
+    `;
+    const result = await db.query(query, [status, bookingId]);
+
+    if (result.rows.length === 0) {
+      throw new ApiError(404, 'Booking not found');
+    }
+
+    if (io) {
+      io.emit('bookingStatusUpdated', { id: bookingId, status });
+    }
+
+    return { booking: result.rows[0] };
+  }
 }
 
 module.exports = ServiceService;
