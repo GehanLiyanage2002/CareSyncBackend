@@ -357,7 +357,7 @@ class AuthService {
     const result = await db.query(query);
     
     let matchedUser = null;
-    let minDistance = 0.55; 
+    let minDistance = 0.60; 
     
     const getEuclideanDistance = (desc1, desc2) => {
       let sum = 0;
@@ -373,6 +373,7 @@ class AuthService {
         if (decryptedDescStr) {
           const storedDescriptor = JSON.parse(decryptedDescStr);
           const distance = getEuclideanDistance(faceDescriptor, storedDescriptor);
+          console.log(`[DEBUG] Distance for user ${row.email}: ${distance}`);
           
           if (distance < minDistance) {
             minDistance = distance;
