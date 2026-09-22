@@ -106,22 +106,22 @@ CareSync is a comprehensive, scalable, and secure healthcare management platform
 - **Validation:** `helmet` and `xss` modules are utilized to protect against XSS and similar injection attacks.
 - **Rate Limiting:** `express-rate-limit` prevents brute-force and DDoS attacks on the API.
 
-## 🚀 Deployment Guide (Docker / AKS)
+## 🚀 Deployment Guide (Azure App Service)
 
-1. **Build Image:**
+1. **Provision Azure App Service:**
+   - Create a new Web App in the Azure Portal.
+   - Set the runtime stack to Node.js 18 LTS.
+   - Configure environment variables in the App Service configuration settings matching the `.env` file.
+
+2. **Deploy via Azure CLI or GitHub Actions:**
+   You can deploy directly using the Azure CLI:
    ```bash
-   docker build -t caresync.azurecr.io/caresync-backend:latest .
+   az webapp up --name caresync-backend --resource-group your-resource-group --runtime "NODE:18-lts"
    ```
-2. **Push to Azure Container Registry:**
+   *Alternatively, configure Continuous Deployment (CI/CD) via GitHub Actions using the Azure Web App deployment template.*
+
+3. **Database Migrations:**
+   Ensure your PostgreSQL instance is accessible. You can run migrations directly from the Kudu console or using SSH in the App Service:
    ```bash
-   docker push caresync.azurecr.io/caresync-backend:latest
-   ```
-3. **Database Migrations on K8s:**
-   Exec into the backend pod and run Prisma migrations to initialize the schema:
-   ```bash
-   kubectl exec -it deployment/caresync-backend -- npm run migrate
-   ```
-4. **Deploy Workloads:**
-   ```bash
-   kubectl apply -f deployment.yaml
+   npm run migrate
    ```
